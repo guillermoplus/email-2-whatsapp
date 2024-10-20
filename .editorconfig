@@ -1,0 +1,37 @@
+# EditorConfig ayuda a definir y mantener estilos de codificación consistentes entre diferentes editores y entornos.
+root = true
+
+[*]
+# Establece la codificación de caracteres
+charset = utf-8
+
+# Elimina espacios en blanco al final de las líneas
+trim_trailing_whitespace = true
+
+# Inserta una nueva línea al final de cada archivo
+insert_final_newline = true
+
+# Número de espacios para la indentación
+indent_size = 2
+
+# Usa espacios en lugar de tabs
+indent_style = space
+
+# Establece el ancho máximo de una línea
+max_line_length = 120
+
+[*.ts]
+# Asegura que los archivos TypeScript tengan las reglas generales aplicadas
+indent_size = 2
+
+[*.json]
+# JSON requiere espacios específicos de 2
+indent_size = 2
+
+[*.md]
+# Markdown no elimina espacios en blanco al final para preservar el formato
+trim_trailing_whitespace = false
+
+[*.yml, *.yaml]
+# YAML usa una indentación de 2 espacios
+indent_size = 2
