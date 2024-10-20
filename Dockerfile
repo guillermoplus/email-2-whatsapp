@@ -1,24 +1,20 @@
-# Usar la imagen oficial de Node.js
 FROM node:20-alpine
 
-# Instalar pnpm globalmente
-RUN npm install -g pnpm
-
-# Crear directorio de trabajo
+# Establecer el directorio de trabajo
 WORKDIR /app
 
-# Copiar los archivos de dependencias
-COPY pnpm-lock.yaml ./
-COPY package.json ./
+# Copiar archivos de configuración
+COPY package.json pnpm-lock.yaml ./
+RUN npm install -g pnpm && pnpm install
 
-# Instalar dependencias usando pnpm
-RUN pnpm install --frozen-lockfile
-
-# Copiar el resto del código fuente
+# Copiar el resto del código
 COPY . .
 
-# Exponer el puerto
-EXPOSE 3000
+# Compilar TypeScript
+RUN pnpm run build
 
-# Comando de inicio
+# Exponer el puerto
+EXPOSE 3072
+
+# Comando para ejecutar la aplicación
 CMD ["pnpm", "start"]
