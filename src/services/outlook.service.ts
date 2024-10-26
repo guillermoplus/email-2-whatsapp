@@ -5,9 +5,9 @@ export class OutlookService {
   private static instance: OutlookService;
   private grahpClient: Client;
 
-  private CLIENT_ID = process.env.OUTLOOK_CLIENT_ID ?? '';
-  private TENANT_ID = process.env.OUTLOOK_TENANT_ID ?? '';
-  private CLIENT_SECRET = process.env.OUTLOOK_CLIENT_SECRET ?? '';
+  private CLIENT_ID = process.env.AZURE_CLIENT_ID ?? '';
+  private TENANT_ID = process.env.AZURE_TENANT_ID ?? '';
+  private CLIENT_SECRET = process.env.AZURE_CLIENT_SECRET ?? '';
 
   private constructor() {
     const credential = new ClientSecretCredential(
@@ -19,8 +19,10 @@ export class OutlookService {
     this.grahpClient = Client.initWithMiddleware({
       authProvider: {
         getAccessToken: async () => {
-          const token = await credential.getToken('https://graph.microsoft.com/.default');
-          return token?.token ?? '';
+          // const token = await credential.getToken('https://graph.microsoft.com/.default');
+          const token = process.env.TOKEN;
+          return token ?? '';
+          // return token?.token ?? '';
         },
       },
     });
@@ -31,6 +33,21 @@ export class OutlookService {
       OutlookService.instance = new OutlookService();
     }
     return OutlookService.instance;
+  }
+
+  async getMyEmails() {
+    try {
+      const emails = await this.grahpClient
+        .api('/me/messages')
+        .select('subject,sender,receivedDateTime')
+        .get();
+
+      console.log('My Emails:', emails.value);
+      return emails.value;
+    } catch (error) {
+      console.error('Error retrieving emails:', error);
+      throw new Error('Failed to retrieve emails.');
+    }
   }
 
   async getUserEmails(userId: string) {
