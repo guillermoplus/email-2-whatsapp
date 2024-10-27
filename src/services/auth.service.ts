@@ -38,6 +38,7 @@ export class AuthService {
       grant_type: 'authorization_code',
       client_secret: this.CLIENT_SECRET,
     });
+    console.log('params:', params.toString());
     const response = await fetch(this.TOKEN_URL, {
       method: 'POST',
       headers: {
@@ -47,6 +48,43 @@ export class AuthService {
     });
     const data = await response.json();
     console.log('getToken Response:', data);
+    return data;
+  }
+
+  async refreshToken(refreshToken: string) {
+    const params = new URLSearchParams({
+      client_id: this.CLIENT_ID,
+      scope: this.SCOPE,
+      refresh_token: refreshToken,
+      redirect_uri: this.REDIRECT_URI,
+      grant_type: 'refresh_token',
+      client_secret: this.CLIENT_SECRET,
+    });
+    const response = await fetch(this.TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params.toString(),
+    });
+    const data = await response.json();
+    console.log('refreshToken Response:', data);
+    return data;
+  }
+
+  async validateToken(token: string) {
+    const params = new URLSearchParams({
+      token,
+    });
+    const response = await fetch(this.TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params.toString(),
+    });
+    const data = await response.json();
+    console.log('validateToken Response:', data);
     return data;
   }
 }

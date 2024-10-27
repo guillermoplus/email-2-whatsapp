@@ -1,35 +1,64 @@
 import dotenv from 'dotenv';
 import express from 'express';
-import {adminPaymentReceiptJobFactory} from "./jobs/admin-payment-receipt.job";
+import {sendAdminPaymentReceiptJobFactory} from "./jobs/send-admin-payment-receipt.job";
 import {AuthController} from "./controllers/auth.controller";
-import {asClass, createContainer, InjectionMode} from 'awilix'
+import {asClass, asValue, createContainer, InjectionMode} from 'awilix'
 import {AuthService} from "./services/auth.service";
+import {TokenRepository} from "./database/repositories/token.repository";
+import {refreshTokenJobFactory} from "./jobs/refresh-token.job";
+import {OutlookService} from "./services/outlook.service";
+import {connect, SqliteDatabase} from "./database/data-source";
 
-dotenv.config();
 
 export const dependencyContainer = createContainer({
   injectionMode: InjectionMode.PROXY,
   strict: true,
 })
-dependencyContainer.register({
-  authService: asClass(AuthService).singleton(),
-  authController: asClass(AuthController).singleton(),
-})
 
-const app = express();
+const preloadDependencies = async () => {
+  // Database connection
+  const dbConnection = await connect();
+  return {
+    dbConnection
+  }
+}
 
-const PORT = process.env.PORT || 3072;
+const initServer = async (preloadedDependencies: {
+  dbConnection: SqliteDatabase
+}) => {
+  dotenv.config();
 
-app.get('/', (req, res) => {
-  res.send('App is running!');
-});
+  dependencyContainer.register({
+    dbConnection: asValue(preloadedDependencies.dbConnection),
+    tokenRepository: asClass(TokenRepository).singleton(),
+    authService: asClass(AuthService).singleton(),
+    outlookService: asClass(OutlookService).transient(),
+    authController: asClass(AuthController).singleton(),
+  })
 
-const authController = dependencyContainer.resolve<AuthController>('authController');
-app.get('/api/outlook/login', authController.login.bind(authController))
-app.get('/api/outlook/login/callback', authController.callback.bind(authController))
+  const app = express();
 
-const job = adminPaymentReceiptJobFactory()
+  const PORT = process.env.PORT || 3072;
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+  app.get('/', (req, res) => {
+    res.send('App is running!');
+  });
+
+  const authController = dependencyContainer.resolve<AuthController>('authController');
+  app.get('/api/outlook/login', authController.login.bind(authController))
+  app.get('/api/outlook/login/callback', authController.callback.bind(authController))
+
+  const jobs = new Map<string, any>();
+  jobs.set('adminPaymentReceiptJob', sendAdminPaymentReceiptJobFactory());
+  jobs.set('refreshTokenJob', refreshTokenJobFactory());
+
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}
+
+preloadDependencies()
+  .then(initServer)
+  .catch(e => {
+    console.error('Error:', e);
+  });

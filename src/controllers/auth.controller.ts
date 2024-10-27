@@ -1,10 +1,13 @@
 import {AuthService} from "../services/auth.service";
+import {TokenRepository} from "../database/repositories/token.repository";
 
 export class AuthController {
   private readonly _authService: AuthService;
+  private readonly _tokenRepository: TokenRepository;
 
   constructor(opts: any) {
     this._authService = opts.authService;
+    this._tokenRepository = opts.tokenRepository;
   }
 
   async login(req: any, res: any) {
@@ -31,6 +34,7 @@ export class AuthController {
         res.status(500).send('Failed to get token.');
         return;
       }
+      const saveResult = await this._tokenRepository.save(tokenData);
       process.env.TOKEN = token;
       res.send({
         message: 'Token retrieved and set successfully.',
