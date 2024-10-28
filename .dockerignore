@@ -1,0 +1,9 @@
+# Ignorar archivos y directorios no necesarios
+node_modules
+npm-debug.log
+.DS_Store
+.env
+.git
+.gitignore
+.dockerignore
+dist

@@ -8,6 +8,7 @@ import {TokenRepository} from "./database/repositories/token.repository";
 import {refreshTokenJobFactory} from "./jobs/refresh-token.job";
 import {OutlookService} from "./services/outlook.service";
 import {connect, SqliteDatabase} from "./database/data-source";
+import {WhatsAppService} from "./services/whatsapp.service";
 
 
 export const dependencyContainer = createContainer({
@@ -33,6 +34,7 @@ const initServer = async (preloadedDependencies: {
     tokenRepository: asClass(TokenRepository).singleton(),
     authService: asClass(AuthService).singleton(),
     outlookService: asClass(OutlookService).transient(),
+    whatsappService: asClass(WhatsAppService).singleton(),
     authController: asClass(AuthController).singleton(),
   })
 
