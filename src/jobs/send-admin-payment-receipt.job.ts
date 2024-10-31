@@ -67,7 +67,9 @@ const saveContentAsHtml = (content: string) => {
  * Convert HTML to image using Puppeteer
  */
 const convertHtmlToImage = async (htmlPath: string, imagePath: string) => {
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({
+    headless: true,
+  });
   const page = await browser.newPage();
 
   // Load the HTML content

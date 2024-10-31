@@ -27,7 +27,8 @@ export type ConnectArgs = {
 export type SqliteDatabase = Database<sqlite3.Database, sqlite3.Statement>
 
 /**
- * Connect to the database
+ * Connect to the database.
+ * If database does not exist, it will be created.
  */
 export const connect = async (args: ConnectArgs = {}) => {
   const db = await open(dataSource);

@@ -7,6 +7,9 @@ export class WhatsAppService {
   constructor() {
     this._client = new Client({
       authStrategy: new LocalAuth(), // Mantiene la sesión activa entre reinicios
+      puppeteer: {
+        headless: true,
+      }
     });
 
     this.initialize();
