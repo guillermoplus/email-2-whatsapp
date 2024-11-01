@@ -24,7 +24,7 @@ export const refreshTokenJobFactory = () => {
         await tokenRepository.save(newToken);
         console.log('Token refreshed successfully.');
       } catch (e: any) {
-        console.error('Refresh Token Job Error:', e);
+        console.error('::: Error in Refresh Token job:', e);
       } finally {
         onComplete();
       }

@@ -21,23 +21,23 @@ export class WhatsAppService {
   private initialize() {
     this._client.on('qr', (qr) => {
       qrcode.generate(qr, {small: true});
-      console.log('Escanea el QR para iniciar sesión.');
+      console.log('Scan the QR code with your phone to authenticate the WhatsApp client');
     });
 
     this._client.on('ready', () => {
-      console.log('WhatsApp Web está listo.');
+      console.log('WhatsApp client is ready');
     });
 
     this._client.on('authenticated', () => {
-      console.log('Autenticación exitosa.');
+      console.log('WhatsApp client authenticated');
     });
 
     this._client.on('auth_failure', (message) => {
-      console.error('Error de autenticación:', message);
+      console.error('WhatsApp authentication failure:', message);
     });
 
     this._client.on('disconnected', (reason) => {
-      console.error(`Cliente desconectado: ${reason}. Intentando reiniciar...`);
+      console.error(`WhatsApp client disconnected: ${reason}`);
       this._client.initialize(); // Reintenta la conexión automáticamente
     });
 
@@ -53,16 +53,16 @@ export class WhatsAppService {
   async sendImage(recipient: string, imagePath: string, caption: string = '') {
     try {
       if (!this._client.info?.wid) {
-        throw new Error('Cliente de WhatsApp no está conectado.');
+        throw new Error('WhatsApp client is not connected.');
       }
 
       const phoneNumber = this.formatPhoneNumberForWhatsapp(recipient);
       const media = MessageMedia.fromFilePath(imagePath);
 
       await this._client.sendMessage(phoneNumber, media, {caption});
-      console.log(`Imagen enviada a ${phoneNumber}`);
+      console.log(`Image sent to ${recipient}`);
     } catch (error: any) {
-      console.error('Error al enviar la imagen:', error?.message || error);
+      console.error('Error sending image:', error);
     }
   }
 
@@ -75,7 +75,7 @@ export class WhatsAppService {
    */
   private formatPhoneNumberForWhatsapp(phoneNumber: string) {
     if (phoneNumber.length < 10) {
-      throw new Error('Número de teléfono inválido.');
+      throw new Error('Invalid phone number. It must have at least 10 digits.');
     }
     return phoneNumber.replace(/[^0-9]/g, '');
   }

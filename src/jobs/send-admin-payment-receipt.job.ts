@@ -42,7 +42,7 @@ export const sendAdminPaymentReceiptJobFactory = () => {
         await convertHtmlToImage('tmp/email.html', 'tmp/email.png');
         await whatsappService.sendImage(env.whatsapp.destinationPhoneNumber, 'tmp/email.png', env.whatsapp.caption);
       } catch (e: any) {
-        console.error('Error:', e);
+        console.error('::: Error in Send Admin Payment Receipt job:', e);
       } finally {
         onComplete();
       }
