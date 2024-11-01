@@ -4,12 +4,14 @@ import {dependencyContainer} from "../index";
 import {TokenRepository} from "../database/repositories/token.repository";
 import puppeteer from "puppeteer";
 import {WhatsAppService} from "../services/whatsapp.service";
+import environment from "../config/environment";
 
 export const sendAdminPaymentReceiptJobFactory = () => {
   return CronJob.from({
     // cronTime: '00 59 11 05 * *', // Run on every 05 of each month at 11:59:00 AM.
     cronTime: '* * * * *', // Run every minute
     onTick: async (onComplete) => {
+      const env = environment();
       console.log('::: Send Admin Payment Receipt job is running...');
       try {
         const whatsappService = dependencyContainer.resolve<WhatsAppService>('whatsappService');
@@ -24,22 +26,21 @@ export const sendAdminPaymentReceiptJobFactory = () => {
         outlookService.setGetToken(async () => {
           return accessToken;
         })
+        const now = new Date();
         const emails = await outlookService.findEmails({
           dateRange: {
-            from: new Date('2024-10-05 00:00:00'),
-            to: new Date('2024-10-05 23:59:59'),
+            from: new Date(`${now.getFullYear()}-${now.getMonth() + 1}-01 00:00:00`),
+            to: new Date(`${now.getFullYear()}-${now.getMonth() + 1}-10 23:59:59`),
           },
-          contentContains: 'Transferiste $379,424',
+          contentContains: process.env.SEARCH_KEYWORD,
         })
-        if (!!emails?.length) {
-          saveContentAsHtml(emails[0].body.content);
-          await convertHtmlToImage('tmp/email.html', 'tmp/email.png');
-          await whatsappService.sendImage('3136804099', 'tmp/email.png', 'Test Comprobante de Pago');
+        if (!emails?.length) {
+          console.log('No emails found with the specified keyword in the content.');
+          return;
         }
-        // console.log('Filtered Emails:', emails?.map((e: any) => {
-        //   // return JSON.stringify(e.body);
-        //   return e.body.content?.length;
-        // }));
+        saveContentAsHtml(emails[0].body.content);
+        await convertHtmlToImage('tmp/email.html', 'tmp/email.png');
+        await whatsappService.sendImage(env.whatsapp.destinationPhoneNumber, 'tmp/email.png', env.whatsapp.caption);
       } catch (e: any) {
         console.error('Error:', e);
       } finally {

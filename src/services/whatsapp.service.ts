@@ -56,7 +56,7 @@ export class WhatsAppService {
         throw new Error('Cliente de WhatsApp no está conectado.');
       }
 
-      const phoneNumber = this.formatPhoneNumberForColombia(recipient);
+      const phoneNumber = this.formatPhoneNumberForWhatsapp(recipient);
       const media = MessageMedia.fromFilePath(imagePath);
 
       await this._client.sendMessage(phoneNumber, media, {caption});
@@ -67,14 +67,16 @@ export class WhatsAppService {
   }
 
   /**
-   * Formatea y valida el número de teléfono para WhatsApp en Colombia.
-   * @param phone - Número de teléfono sin el prefijo + (ej: 3001234567).
-   * @returns Número formateado para WhatsApp (ej: 573001234567@c.us).
+   * Formatea el número de teléfono para WhatsApp.
+   * Valida que el número de teléfono tenga al menos 10 dígitos.
+   * Limpiar cualquier caracter que no sea un dígito.
+   * @param phoneNumber - Número de teléfono en formato internacional (ej: '573001234567').
+   * @private
    */
-  private formatPhoneNumberForColombia(phone: string): string {
-    if (!/^\d{10}$/.test(phone)) {
-      throw new Error('El número de teléfono debe tener 10 dígitos.');
+  private formatPhoneNumberForWhatsapp(phoneNumber: string) {
+    if (phoneNumber.length < 10) {
+      throw new Error('Número de teléfono inválido.');
     }
-    return `57${phone}@c.us`; // Prefijo internacional para Colombia + número
+    return phoneNumber.replace(/[^0-9]/g, '');
   }
 }

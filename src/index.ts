@@ -1,4 +1,3 @@
-import dotenv from 'dotenv';
 import express from 'express';
 import {sendAdminPaymentReceiptJobFactory} from "./jobs/send-admin-payment-receipt.job";
 import {AuthController} from "./controllers/auth.controller";
@@ -9,6 +8,9 @@ import {refreshTokenJobFactory} from "./jobs/refresh-token.job";
 import {OutlookService} from "./services/outlook.service";
 import {connect, SqliteDatabase} from "./database/data-source";
 import {WhatsAppService} from "./services/whatsapp.service";
+import environment from "./config/environment";
+
+//Define Environment
 
 
 export const dependencyContainer = createContainer({
@@ -27,7 +29,7 @@ const preloadDependencies = async () => {
 const initServer = async (preloadedDependencies: {
   dbConnection: SqliteDatabase
 }) => {
-  dotenv.config();
+  environment();
 
   dependencyContainer.register({
     dbConnection: asValue(preloadedDependencies.dbConnection),
