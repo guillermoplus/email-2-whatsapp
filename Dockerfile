@@ -5,7 +5,12 @@ WORKDIR /app
 
 # Copiar archivos de configuración
 COPY package.json pnpm-lock.yaml ./
-RUN npm install -g pnpm && pnpm install
+
+# Instalar dependencias
+RUN npm install -g pnpm
+RUN pnpm store prune
+RUN pnpm install puppeteer
+RUN pnpm install
 
 # Copiar el resto del código
 COPY . .
