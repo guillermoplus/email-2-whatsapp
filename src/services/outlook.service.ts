@@ -41,7 +41,7 @@ export class OutlookService {
     this._getToken = callback;
   }
 
-  private getGraphClient() {
+  private async getGraphClient() {
     if (!this._getToken) {
       throw new Error('getToken function is not set.');
     }
@@ -57,7 +57,8 @@ export class OutlookService {
 
   async findEmails(filter: EmailFilter) {
     try {
-      const response = await this.getGraphClient()
+      const client = await this.getGraphClient();
+      const response = await client
         .api('/me/messages')
         .search(`"${filter.contentContains}"`)
         // .filter(this.buildFilterQuery(filter))
@@ -65,14 +66,15 @@ export class OutlookService {
         .get();
       return response.value;
     } catch (e) {
-      console.error('Error:', e);
-      throw new Error('Failed to retrieve emails.');
+      console.log('Failed to retrieve emails.');
+      throw e;
     }
   }
 
   async getUserEmails(userId: string) {
     try {
-      const emails = await this.getGraphClient()
+      const client = await this.getGraphClient();
+      const emails = await client
         .api(`/users/${userId}/messages`)
         .select('subject,sender,receivedDateTime')
         .get();
@@ -87,7 +89,9 @@ export class OutlookService {
 
   async listUsers() {
     try {
-      const users = await this.getGraphClient().api('/users').get();
+      const client = await this.getGraphClient();
+      const users = await client
+        .api('/users').get();
       console.log('Users:', users.value);
       return users.value;
     } catch (error) {

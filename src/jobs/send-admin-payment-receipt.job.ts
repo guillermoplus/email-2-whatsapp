@@ -5,11 +5,14 @@ import {TokenRepository} from "../database/repositories/token.repository";
 import puppeteer from "puppeteer";
 import {WhatsAppService} from "../services/whatsapp.service";
 import environment from "../config/environment";
+import {MessageRepository} from "../database/repositories/message.repository";
+import {MessageStatus} from "../database/entities/message.entity";
 
 export const sendAdminPaymentReceiptJobFactory = () => {
+  const cronTime = environment().cronTime.sendAdminPaymentReceipt;
   return CronJob.from({
     // cronTime: '00 59 11 05 * *', // Run on every 05 of each month at 11:59:00 AM.
-    cronTime: '* * * * *', // Run every minute
+    cronTime: cronTime,
     onTick: async (onComplete) => {
       const env = environment();
       console.log('::: Send Admin Payment Receipt job is running...');
@@ -17,6 +20,20 @@ export const sendAdminPaymentReceiptJobFactory = () => {
         const whatsappService = dependencyContainer.resolve<WhatsAppService>('whatsappService');
         const outlookService = dependencyContainer.resolve<OutlookService>('outlookService');
         const tokenRepository = dependencyContainer.resolve<TokenRepository>('tokenRepository');
+        const messageRepository = dependencyContainer.resolve<MessageRepository>('messageRepository');
+
+        const messageAlreadySentThisMonth = (await messageRepository.findMessagesByMonth(new Date().getMonth() + 1))?.length > 0;
+
+        if (messageAlreadySentThisMonth) {
+          console.log('Admin payment receipt already sent this month.');
+          return;
+        }
+
+        if (!whatsappService.isAuthenticated) {
+          console.error('WhatsApp client is not connected.');
+          return;
+        }
+
         const latestToken = await tokenRepository.getLatestToken();
         const accessToken = latestToken?.access_token;
         if (!accessToken) {
@@ -41,7 +58,16 @@ export const sendAdminPaymentReceiptJobFactory = () => {
         saveContentAsHtml(emails[0].body.content);
         await convertHtmlToImage('tmp/email.html', 'tmp/email.png');
         await whatsappService.sendImage(env.whatsapp.destinationPhoneNumber, 'tmp/email.png', env.whatsapp.caption);
+        await messageRepository.save({
+          status: MessageStatus.SENT,
+          sent_at: new Date(),
+          message: env.whatsapp.caption,
+        });
       } catch (e: any) {
+        if (e.code === 'InvalidAuthenticationToken') {
+          console.error('User account is not authenticated. Go to /api/outlook/login to authenticate.');
+          return;
+        }
         console.error('::: Error in Send Admin Payment Receipt job:', e);
       } finally {
         onComplete();

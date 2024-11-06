@@ -3,10 +3,12 @@ import {dependencyContainer} from "../index";
 import {TokenRepository} from "../database/repositories/token.repository";
 import {TokenEntity} from "../database/entities/token.entity";
 import {AuthService} from "../services/auth.service";
+import environment from "../config/environment";
 
 export const refreshTokenJobFactory = () => {
+  const cronTime = environment().cronTime.refreshOutlookToken;
   return CronJob.from({
-    cronTime: '* * * * *', // Run every minute
+    cronTime: cronTime,
     onTick: async (onComplete) => {
       console.log('::: Refresh Token job is running...');
       try {
@@ -22,7 +24,7 @@ export const refreshTokenJobFactory = () => {
         const authService = dependencyContainer.resolve<AuthService>('authService');
         const newToken = await authService.refreshToken(currentToken.refresh_token);
         await tokenRepository.save(newToken);
-        console.log('Token refreshed successfully.');
+        console.log('Token refreshed successfully!');
       } catch (e: any) {
         console.error('::: Error in Refresh Token job:', e);
       } finally {

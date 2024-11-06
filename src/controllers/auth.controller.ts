@@ -1,13 +1,37 @@
 import {AuthService} from "../services/auth.service";
 import {TokenRepository} from "../database/repositories/token.repository";
+import {WhatsAppService} from "../services/whatsapp.service";
 
 export class AuthController {
   private readonly _authService: AuthService;
   private readonly _tokenRepository: TokenRepository;
+  private readonly _whatsappService: WhatsAppService;
 
   constructor(opts: any) {
+
     this._authService = opts.authService;
     this._tokenRepository = opts.tokenRepository;
+    this._whatsappService = opts.whatsappService;
+  }
+
+  async whatsappLogin(req: any, res: any) {
+    try {
+      if (this._whatsappService.isAuthenticated) {
+        res.send('WhatsApp client is already authenticated.');
+        return;
+      }
+      this._whatsappService.initialize();
+      const qrCode = this._whatsappService.qrCodeImage;
+      res.send(`
+        <div style="text-align: center;">
+            <h1>Scan the QR code to authenticate WhatsApp</h1>
+            <img src="${qrCode}" alt="QR Code" />
+        </div>
+      `);
+    } catch (error) {
+      console.error('Error:', error);
+      res.status(500).send('Internal server error.');
+    }
   }
 
   async login(req: any, res: any) {
@@ -34,10 +58,10 @@ export class AuthController {
         res.status(500).send('Failed to get token.');
         return;
       }
-      const saveResult = await this._tokenRepository.save(tokenData);
+      await this._tokenRepository.save(tokenData);
       process.env.TOKEN = token;
       res.send({
-        message: 'Token retrieved and set successfully.',
+        message: 'Token retrieved and set successfully!',
       });
     } catch (error) {
       console.error('Error:', error);

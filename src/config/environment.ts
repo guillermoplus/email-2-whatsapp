@@ -29,6 +29,10 @@ const getVariablesObject = () => ({
     destinationPhoneNumber: process.env.WHATSAPP_PHONE_NUMBER || '',
     caption: process.env.WHATSAPP_MESSAGE || '',
   },
+  cronTime: {
+    refreshOutlookToken: process.env.CRON_REFRESH_OUTLOOK_TOKEN || '0 0 * * *',
+    sendAdminPaymentReceipt: process.env.CRON_SEND_ADMIN_PAYMENT_RECEIPT || '0 0 * * *',
+  }
 });
 
 /**
@@ -66,6 +70,13 @@ const validateEnvironmentVariables = () => {
   } else if (!variables.whatsapp.destinationPhoneNumber) {
     throw new Error('WHATSAPP_PHONE_NUMBER is not defined in environment variables');
   }
+
+  // Cron Time
+  if (!variables.cronTime.refreshOutlookToken) {
+    throw new Error('CRON_REFRESH_OUTLOOK_TOKEN is not defined in environment variables');
+  } else if (!variables.cronTime.sendAdminPaymentReceipt) {
+    throw new Error('CRON_SEND_ADMIN_PAYMENT_RECEIPT is not defined in environment variables');
+  }
 }
 
 /**
@@ -88,11 +99,11 @@ const environment = () => {
     if (loadedEnv.error) {
       throw new Error('Failed to load environment variables from .env file');
     }
-    console.log('Environment variables loaded successfully');
+    console.log('Environment variables loaded successfully!');
   }
   validateEnvironmentVariables();
   process.env.ENV_VARIABLES_LOADED = 'true';
-  console.log('Environment variables validated and loaded successfully');
+  console.log('Environment variables validated and loaded successfully!');
   return getVariablesObject();
 };
 

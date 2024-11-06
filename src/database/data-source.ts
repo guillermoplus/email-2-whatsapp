@@ -35,7 +35,12 @@ export const connect = async (args: ConnectArgs = {}) => {
   if (args.onTraceCallback) {
     db.on('trace', args.onTraceCallback);
   }
-  // Ensure token table creation
+  await ensureTablesCreation(db);
+  return db;
+}
+
+const ensureTablesCreation = async (db: SqliteDatabase) => {
+  // Ensure Token table creation
   await db.exec(`CREATE TABLE IF NOT EXISTS tokens
                  (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,5 +52,15 @@ export const connect = async (args: ConnectArgs = {}) => {
                     ext_expires_in INTEGER,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                  )`);
-  return db;
+  // Ensure Message table creation
+  await db.exec(`CREATE TABLE IF NOT EXISTS messages
+                 (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    message TEXT,
+                    status TEXT,
+                    sent_at TIMESTAMP,
+                    scheduled_at TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                 )`);
 }
