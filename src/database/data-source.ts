@@ -57,6 +57,7 @@ const ensureTablesCreation = async (db: SqliteDatabase) => {
                  (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     message TEXT,
+                    phone_number TEXT,
                     status TEXT,
                     sent_at TIMESTAMP,
                     scheduled_at TIMESTAMP,

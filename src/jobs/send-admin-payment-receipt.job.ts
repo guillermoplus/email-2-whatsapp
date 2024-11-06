@@ -22,7 +22,8 @@ export const sendAdminPaymentReceiptJobFactory = () => {
         const tokenRepository = dependencyContainer.resolve<TokenRepository>('tokenRepository');
         const messageRepository = dependencyContainer.resolve<MessageRepository>('messageRepository');
 
-        const messageAlreadySentThisMonth = (await messageRepository.findMessagesByMonth(new Date().getMonth() + 1))?.length > 0;
+        const monthMessages = await messageRepository.findMessagesByMonth(new Date().getMonth() + 1);
+        const messageAlreadySentThisMonth = monthMessages.some(m => m.phone_number === env.whatsapp.destinationPhoneNumber);
 
         if (messageAlreadySentThisMonth) {
           console.log('Admin payment receipt already sent this month.');
@@ -57,11 +58,17 @@ export const sendAdminPaymentReceiptJobFactory = () => {
         }
         saveContentAsHtml(emails[0].body.content);
         await convertHtmlToImage('tmp/email.html', 'tmp/email.png');
-        await whatsappService.sendImage(env.whatsapp.destinationPhoneNumber, 'tmp/email.png', env.whatsapp.caption);
+
+        const monthName = new Intl.DateTimeFormat('es', {month: 'long'}).format(now);
+        const caption = env.whatsapp.caption || `Buen día, comparto el comprobante de pago de ${monthName}-${now.getFullYear()}.`;
+        const phoneNumber = env.whatsapp.destinationPhoneNumber;
+
+        await whatsappService.sendImage(phoneNumber, 'tmp/email.png', caption);
         await messageRepository.save({
           status: MessageStatus.SENT,
           sent_at: new Date(),
-          message: env.whatsapp.caption,
+          message: caption,
+          phone_number: phoneNumber,
         });
       } catch (e: any) {
         if (e.code === 'InvalidAuthenticationToken') {

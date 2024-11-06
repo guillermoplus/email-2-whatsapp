@@ -26,16 +26,18 @@ export class MessageRepository {
    */
   async save({
                message,
+               phone_number,
                status,
                sent_at,
                scheduled_at,
              }: Partial<MessageEntity>): Promise<MessageEntity> {
     const created_at = new Date().toISOString();
     const updated_at = created_at;
-    const query = `INSERT INTO ${this._tableName} (message, status, sent_at, scheduled_at, created_at, updated_at)
-                   VALUES (?, ?, ?, ?, ?, ?)`;
+    const query = `INSERT INTO ${this._tableName} (message, phone_number, status, sent_at, scheduled_at, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)`;
     const params = [
       message,
+      phone_number,
       status,
       sent_at ? sent_at.toISOString() : null,
       scheduled_at ? scheduled_at.toISOString() : null,
@@ -47,6 +49,7 @@ export class MessageRepository {
     return {
       id: result.lastID,
       message,
+      phone_number,
       status,
       sent_at,
       scheduled_at,
