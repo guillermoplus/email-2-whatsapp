@@ -103,6 +103,7 @@ const saveContentAsHtml = (content: string) => {
 const convertHtmlToImage = async (htmlPath: string, imagePath: string) => {
   const browser = await puppeteer.launch({
     headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
   const page = await browser.newPage();
 
@@ -123,6 +124,3 @@ const convertHtmlToImage = async (htmlPath: string, imagePath: string) => {
 
   await browser.close();
 };
-
-// Contenido del mensaje a encontrar. La fecha y la hora pueden variar. Pero si o si vendrán el monto y la cuenta destino.
-// Bancolombia: Transferiste $379,424 desde tu cuenta *0279 a la cuenta *62985980565 el 05/10/2024 a las 07:30. ¿Dudas? Llamanos al 018000931987. Estamos cerca.
