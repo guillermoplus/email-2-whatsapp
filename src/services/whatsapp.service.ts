@@ -14,6 +14,7 @@ export class WhatsAppService {
       puppeteer: {
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        // executablePath: process.env.CHROMIUM_EXECUTABLE_PATH,
       },
     });
 
