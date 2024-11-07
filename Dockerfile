@@ -8,6 +8,7 @@ COPY package.json pnpm-lock.yaml ./
 
 # Instalar pnpm y las dependencias
 RUN npm install -g pnpm
+RUN pnpm install
 RUN pnpm add --save-dev puppeteer
 RUN pnpm add puppeteer-core
 
@@ -22,9 +23,6 @@ RUN apk add --no-cache \
 
 # Definir la ubicación del ejecutable de Chromium
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
-
-# Instalar dependencias de la app
-RUN pnpm install
 
 # Copiar el resto del código
 COPY . .
