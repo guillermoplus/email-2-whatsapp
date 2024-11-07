@@ -18,7 +18,10 @@ export class WhatsAppService {
       },
     });
 
-    this.initialize();
+    this.setClientEventHandlers().then(() => {
+      this.initialize().then();
+    });
+
   }
 
   get isAuthenticated() {
@@ -55,7 +58,7 @@ export class WhatsAppService {
     return formattedPhone;
   }
 
-  async initialize() {
+  async setClientEventHandlers() {
     this._client.on('qr', (qr) => {
       QRCode.toDataURL(qr).then(uri => {
         this._qrCodeImage = uri;
@@ -92,7 +95,9 @@ export class WhatsAppService {
         console.error('Max reconnection attempts reached. Please check the service manually.');
       }
     });
+  }
 
+  async initialize() {
     await this._client.initialize();
   }
 }
