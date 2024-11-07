@@ -11,6 +11,7 @@ export class WhatsAppService {
       authStrategy: new LocalAuth(), // Keep the session in the local file system
       puppeteer: {
         headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
       }
     });
 
