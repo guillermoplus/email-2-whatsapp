@@ -54,7 +54,7 @@ export class WhatsAppService {
     return formattedPhone;
   }
 
-  private async initialize() {
+  async initialize() {
     this._client.on('qr', (qr) => {
       QRCode.toDataURL(qr).then(uri => {
         this._qrCodeImage = uri;

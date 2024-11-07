@@ -20,7 +20,7 @@ export class AuthController {
         res.send('WhatsApp client is already authenticated.');
         return;
       }
-      this._whatsappService.initialize();
+      await this._whatsappService.initialize();
       const qrCode = this._whatsappService.qrCodeImage;
       res.send(`
         <div style="text-align: center;">
