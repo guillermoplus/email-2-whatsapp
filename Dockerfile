@@ -9,20 +9,7 @@ COPY package.json pnpm-lock.yaml ./
 # Instalar pnpm y las dependencias
 RUN npm install -g pnpm
 RUN pnpm install
-RUN pnpm add --save-dev puppeteer
-RUN pnpm add puppeteer-core
-
-# Instalar las dependencias de sistema necesarias para Puppeteer en Alpine
-RUN apk add --no-cache \
-    chromium \
-    nss \
-    freetype \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont
-
-# Definir la ubicación del ejecutable de Chromium
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+RUN pnpm add puppeteer
 
 # Copiar el resto del código
 COPY . .
