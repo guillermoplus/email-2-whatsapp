@@ -5,14 +5,16 @@ export class WhatsAppService {
   private _client: Client;
   private _qrCodeImage: string = '';
   private _isAuthenticated: boolean = false;
+  private _reconnectionAttempts = 0;
+  private readonly _maxReconnectionAttempts = 5;
 
   constructor() {
     this._client = new Client({
-      authStrategy: new LocalAuth(), // Keep the session in the local file system
+      authStrategy: new LocalAuth(),
       puppeteer: {
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      }
+      },
     });
 
     this.initialize();
@@ -26,35 +28,22 @@ export class WhatsAppService {
     return this._qrCodeImage;
   }
 
-  /**
-   * Send a message to a recipient.
-   * @param recipient - Phone number with country code (e.g. '573001234567').
-   * @param imagePath - Path to the image to send.
-   * @param caption - Caption for the image.
-   */
   async sendImage(recipient: string, imagePath: string, caption: string = '') {
-    try {
-      if (!this._client.info?.wid || !this._isAuthenticated) {
-        throw new Error('WhatsApp client is not connected.');
-      }
+    if (!this._isAuthenticated) {
+      console.error('Client not authenticated. Unable to send image.');
+      return;
+    }
 
+    try {
       const phoneNumber = this.formatPhoneNumberForWhatsapp(recipient);
       const media = MessageMedia.fromFilePath(imagePath);
-
       await this._client.sendMessage(phoneNumber, media, {caption});
       console.log(`Image sent to ${recipient}`);
-    } catch (error: any) {
-      throw error;
+    } catch (error) {
+      console.error('Error sending image:', error);
     }
   }
 
-  /**
-   * Format the phone number for WhatsApp.
-   * Validate if the phone number has at least 10 digits.
-   * Clean the phone number from any non-numeric character.
-   * @param phoneNumber - Phone number to format with country code (e.g. '573001234567').
-   * @private
-   */
   private formatPhoneNumberForWhatsapp(phoneNumber: string) {
     if (phoneNumber.length < 10) {
       throw new Error('Invalid phone number. It must have at least 10 digits.');
@@ -65,29 +54,25 @@ export class WhatsAppService {
     return formattedPhone;
   }
 
-  /**
-   * Initialize the WhatsApp client.
-   */
-  public initialize() {
+  private async initialize() {
     this._client.on('qr', (qr) => {
-      QRCode.toDataURL(qr)
-        .then((uri) => {
-          this._qrCodeImage = uri;
-        })
-        .catch((error) => {
-          console.error('Error generating QR code as image:', error);
-        })
-      // qrcode.generate(qr, {small: true});
+      QRCode.toDataURL(qr).then(uri => {
+        this._qrCodeImage = uri;
+      }).catch(error => {
+        console.error('Error generating QR code as image:', error);
+      });
       console.log('Scan the QR code with your phone to authenticate the WhatsApp client');
     });
 
     this._client.on('ready', () => {
-      console.log('WhatsApp client is ready!');
+      this._isAuthenticated = true;
+      console.log('WhatsApp client is ready and authenticated!');
+      this._reconnectionAttempts = 0; // Reset reconnection attempts
     });
 
     this._client.on('authenticated', () => {
+      console.log('WhatsApp client authenticated!');
       this._isAuthenticated = true;
-      console.log('WhatsApp client is authenticated!');
     });
 
     this._client.on('auth_failure', (message) => {
@@ -98,9 +83,15 @@ export class WhatsAppService {
     this._client.on('disconnected', async (reason) => {
       this._isAuthenticated = false;
       console.error(`WhatsApp client disconnected: ${reason}`);
-      await this._client.initialize(); // Retry connection automatically
+      this._reconnectionAttempts++;
+      if (this._reconnectionAttempts <= this._maxReconnectionAttempts) {
+        console.log(`Reconnection attempt ${this._reconnectionAttempts}`);
+        await this.initialize();
+      } else {
+        console.error('Max reconnection attempts reached. Please check the service manually.');
+      }
     });
 
-    this._client.initialize().then();
+    await this._client.initialize();
   }
 }

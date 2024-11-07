@@ -8,8 +8,8 @@ COPY package.json pnpm-lock.yaml ./
 
 # Instalar pnpm y las dependencias
 RUN npm install -g pnpm
-#RUN pnpm add --save-dev puppeteer
-#RUN pnpm add puppeteer-core
+RUN pnpm add --save-dev puppeteer
+RUN pnpm add puppeteer-core
 
 # Instalar las dependencias de sistema necesarias para Puppeteer en Alpine
 RUN apk add --no-cache \
