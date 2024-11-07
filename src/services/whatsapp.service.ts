@@ -1,5 +1,7 @@
 import {Client, LocalAuth, MessageMedia} from 'whatsapp-web.js';
 import QRCode from 'qrcode';
+import fs from 'fs';
+import path from 'path';
 
 export class WhatsAppService {
   private _client: Client;
@@ -9,6 +11,8 @@ export class WhatsAppService {
   private readonly _maxReconnectionAttempts = 5;
 
   constructor() {
+    this.clearSession();
+
     this._client = new Client({
       authStrategy: new LocalAuth(),
       puppeteer: {
@@ -99,5 +103,17 @@ export class WhatsAppService {
 
   async initialize() {
     await this._client.initialize();
+  }
+
+  private clearSession() {
+    this._client?.destroy().then();
+    this._isAuthenticated = false;
+    this._qrCodeImage = '';
+
+    const sessionPath = path.join('/app', '.wwebjs_auth', 'session');
+
+    if (fs.existsSync(sessionPath)) {
+      fs.rmSync(sessionPath, {recursive: true, force: true});
+    }
   }
 }
