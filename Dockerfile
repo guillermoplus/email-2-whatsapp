@@ -8,7 +8,6 @@ COPY package.json pnpm-lock.yaml ./
 
 # Instalar pnpm y las dependencias
 RUN npm install -g pnpm
-RUN pnpm store prune
 RUN pnpm install --save-dev puppeteer
 RUN pnpm install puppeteer-core
 

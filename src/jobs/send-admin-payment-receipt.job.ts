@@ -36,7 +36,7 @@ export const sendAdminPaymentReceiptJobFactory = () => {
         }
 
         if (!whatsappService.isAuthenticated) {
-          console.error('WhatsApp client is not connected.');
+          console.error('WhatsApp client is not authenticated. Go to /api/whatsapp/login to authenticate.');
           return;
         }
 
