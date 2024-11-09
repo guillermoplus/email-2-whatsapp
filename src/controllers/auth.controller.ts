@@ -1,6 +1,6 @@
-import {AuthService} from "../services/auth.service";
-import {TokenRepository} from "../database/repositories/token.repository";
-import {WhatsAppService} from "../services/whatsapp.service";
+import { AuthService } from '../services/auth.service';
+import { TokenRepository } from '../database/repositories/token.repository';
+import { WhatsAppService } from '../services/whatsapp.service';
 
 export class AuthController {
   private readonly _authService: AuthService;
@@ -8,7 +8,6 @@ export class AuthController {
   private readonly _whatsappService: WhatsAppService;
 
   constructor(opts: any) {
-
     this._authService = opts.authService;
     this._tokenRepository = opts.tokenRepository;
     this._whatsappService = opts.whatsappService;

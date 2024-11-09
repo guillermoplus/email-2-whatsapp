@@ -1,4 +1,4 @@
-import {Client, LocalAuth, MessageMedia} from 'whatsapp-web.js';
+import { Client, LocalAuth, MessageMedia } from 'whatsapp-web.js';
 import QRCode from 'qrcode';
 import fs from 'fs';
 import path from 'path';
@@ -11,8 +11,6 @@ export class WhatsAppService {
   private readonly _maxReconnectionAttempts = 5;
 
   constructor() {
-    this.clearSession();
-
     this._client = new Client({
       authStrategy: new LocalAuth(),
       puppeteer: {
@@ -25,7 +23,6 @@ export class WhatsAppService {
     this.setClientEventHandlers().then(() => {
       this.initialize().then();
     });
-
   }
 
   get isAuthenticated() {
@@ -45,7 +42,7 @@ export class WhatsAppService {
     try {
       const phoneNumber = this.formatPhoneNumberForWhatsapp(recipient);
       const media = MessageMedia.fromFilePath(imagePath);
-      await this._client.sendMessage(phoneNumber, media, {caption});
+      await this._client.sendMessage(phoneNumber, media, { caption });
       console.log(`Image sent to ${recipient}`);
     } catch (error) {
       console.error('Error sending image:', error);
@@ -64,12 +61,16 @@ export class WhatsAppService {
 
   async setClientEventHandlers() {
     this._client.on('qr', (qr) => {
-      QRCode.toDataURL(qr).then(uri => {
-        this._qrCodeImage = uri;
-      }).catch(error => {
-        console.error('Error generating QR code as image:', error);
-      });
-      console.log('Scan the QR code with your phone to authenticate the WhatsApp client');
+      QRCode.toDataURL(qr)
+        .then((uri) => {
+          this._qrCodeImage = uri;
+        })
+        .catch((error) => {
+          console.error('Error generating QR code as image:', error);
+        });
+      console.log(
+        'Scan the QR code with your phone to authenticate the WhatsApp client'
+      );
     });
 
     this._client.on('ready', () => {
@@ -96,12 +97,15 @@ export class WhatsAppService {
         console.log(`Reconnection attempt ${this._reconnectionAttempts}`);
         await this.initialize();
       } else {
-        console.error('Max reconnection attempts reached. Please check the service manually.');
+        console.error(
+          'Max reconnection attempts reached. Please check the service manually.'
+        );
       }
     });
   }
 
   async initialize() {
+    this.clearSession();
     await this._client.initialize();
   }
 
@@ -113,7 +117,7 @@ export class WhatsAppService {
     const sessionPath = path.join('/app', '.wwebjs_auth', 'session');
 
     if (fs.existsSync(sessionPath)) {
-      fs.rmSync(sessionPath, {recursive: true, force: true});
+      fs.rmSync(sessionPath, { recursive: true, force: true });
     }
   }
 }

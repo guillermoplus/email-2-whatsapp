@@ -1,0 +1,19 @@
+# Directorios que suelen generarse automáticamente
+node_modules
+dist
+build
+coverage
+logs
+temp
+public
+
+# Archivos de configuración y lock
+package-lock.json
+yarn.lock
+
+# Archivos estáticos o minificados
+*.min.js
+*.bundle.js
+
+# Archivos de entorno
+.env

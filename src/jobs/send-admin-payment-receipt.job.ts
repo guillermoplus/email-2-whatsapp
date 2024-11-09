@@ -1,12 +1,12 @@
-import {CronJob} from "cron";
-import {OutlookService} from "../services/outlook.service";
-import {dependencyContainer} from "../index";
-import {TokenRepository} from "../database/repositories/token.repository";
-import puppeteer from "puppeteer";
-import {WhatsAppService} from "../services/whatsapp.service";
-import environment from "../config/environment";
-import {MessageRepository} from "../database/repositories/message.repository";
-import {MessageStatus} from "../database/entities/message.entity";
+import { CronJob } from 'cron';
+import { OutlookService } from '../services/outlook.service';
+import { dependencyContainer } from '../index';
+import { TokenRepository } from '../database/repositories/token.repository';
+import puppeteer from 'puppeteer';
+import { WhatsAppService } from '../services/whatsapp.service';
+import environment from '../config/environment';
+import { MessageRepository } from '../database/repositories/message.repository';
+import { MessageStatus } from '../database/entities/message.entity';
 
 export const sendAdminPaymentReceiptJobFactory = () => {
   const cronTime = environment().cronTime.sendAdminPaymentReceipt;
@@ -20,10 +20,15 @@ export const sendAdminPaymentReceiptJobFactory = () => {
         const whatsappService = dependencyContainer.resolve<WhatsAppService>('whatsappService');
         const outlookService = dependencyContainer.resolve<OutlookService>('outlookService');
         const tokenRepository = dependencyContainer.resolve<TokenRepository>('tokenRepository');
-        const messageRepository = dependencyContainer.resolve<MessageRepository>('messageRepository');
+        const messageRepository =
+          dependencyContainer.resolve<MessageRepository>('messageRepository');
 
-        const monthMessages = await messageRepository.findMessagesByMonth(new Date().getMonth() + 1);
-        const messageAlreadySentThisMonth = monthMessages.some(m => m.phone_number === env.whatsapp.destinationPhoneNumber);
+        const monthMessages = await messageRepository.findMessagesByMonth(
+          new Date().getMonth() + 1
+        );
+        const messageAlreadySentThisMonth = monthMessages.some(
+          (m) => m.phone_number === env.whatsapp.destinationPhoneNumber
+        );
 
         if (messageAlreadySentThisMonth) {
           console.log('Admin payment receipt already sent this month.');
@@ -38,12 +43,14 @@ export const sendAdminPaymentReceiptJobFactory = () => {
         const latestToken = await tokenRepository.getLatestToken();
         const accessToken = latestToken?.access_token;
         if (!accessToken) {
-          console.error('User account is not authenticated. Go to /api/outlook/login to authenticate.');
+          console.error(
+            'User account is not authenticated. Go to /api/outlook/login to authenticate.'
+          );
           return;
         }
         outlookService.setGetToken(async () => {
           return accessToken;
-        })
+        });
         const now = new Date();
         const emails = await outlookService.findEmails({
           dateRange: {
@@ -51,7 +58,7 @@ export const sendAdminPaymentReceiptJobFactory = () => {
             to: new Date(`${now.getFullYear()}-${now.getMonth() + 1}-10 23:59:59`),
           },
           contentContains: process.env.SEARCH_KEYWORD,
-        })
+        });
         if (!emails?.length) {
           console.log('No emails found with the specified keyword in the content.');
           return;
@@ -59,8 +66,12 @@ export const sendAdminPaymentReceiptJobFactory = () => {
         saveContentAsHtml(emails[0].body.content);
         await convertHtmlToImage('tmp/email.html', 'tmp/email.png');
 
-        const monthName = new Intl.DateTimeFormat('es', {month: 'long'}).format(now);
-        const caption = env.whatsapp.caption || `Buen día, comparto el comprobante de pago de ${monthName}-${now.getFullYear()}.`;
+        const monthName = new Intl.DateTimeFormat('es', {
+          month: 'long',
+        }).format(now);
+        const caption =
+          env.whatsapp.caption ||
+          `Buen día, comparto el comprobante de pago de ${monthName}-${now.getFullYear()}.`;
         const phoneNumber = env.whatsapp.destinationPhoneNumber;
 
         await whatsappService.sendImage(phoneNumber, 'tmp/email.png', caption);
@@ -72,7 +83,9 @@ export const sendAdminPaymentReceiptJobFactory = () => {
         });
       } catch (e: any) {
         if (e.code === 'InvalidAuthenticationToken') {
-          console.error('User account is not authenticated. Go to /api/outlook/login to authenticate.');
+          console.error(
+            'User account is not authenticated. Go to /api/outlook/login to authenticate.'
+          );
           return;
         }
         console.error('::: Error in Send Admin Payment Receipt job:', e);
@@ -85,8 +98,8 @@ export const sendAdminPaymentReceiptJobFactory = () => {
     },
     start: true,
     timeZone: 'America/Bogota',
-  })
-}
+  });
+};
 
 /**
  * Save content as HTML file
@@ -95,7 +108,7 @@ const saveContentAsHtml = (content: string) => {
   const fs = require('fs');
   fs.writeFileSync('./tmp/email.html', content);
   console.log('Email content saved as email.html');
-}
+};
 
 /**
  * Convert HTML to image using Puppeteer
@@ -108,7 +121,9 @@ const convertHtmlToImage = async (htmlPath: string, imagePath: string) => {
   const page = await browser.newPage();
 
   // Load the HTML content
-  await page.goto(`file://${process.cwd()}/${htmlPath}`, {waitUntil: 'networkidle0'});
+  await page.goto(`file://${process.cwd()}/${htmlPath}`, {
+    waitUntil: 'networkidle0',
+  });
 
   // Set the viewport to capture the whole page
   const dimensions = await page.evaluate(() => ({
@@ -118,7 +133,7 @@ const convertHtmlToImage = async (htmlPath: string, imagePath: string) => {
   await page.setViewport(dimensions);
 
   // Take a screenshot and save it as an image
-  await page.screenshot({path: imagePath, fullPage: true});
+  await page.screenshot({ path: imagePath, fullPage: true });
 
   console.log(`HTML converted to image and saved as ${imagePath}`);
 

@@ -1,5 +1,5 @@
-import {Client} from '@microsoft/microsoft-graph-client';
-import {ClientSecretCredential} from '@azure/identity';
+import { Client } from '@microsoft/microsoft-graph-client';
+import { ClientSecretCredential } from '@azure/identity';
 
 /**
  * Filter object for email search.
@@ -15,7 +15,7 @@ interface EmailFilter {
   dateRange?: {
     from: Date;
     to: Date;
-  },
+  };
   sender?: string;
   subjectContains?: string;
   contentContains?: string;
@@ -48,7 +48,7 @@ export class OutlookService {
     if (!this._grahpClient) {
       return Client.initWithMiddleware({
         authProvider: {
-          getAccessToken: this._getToken
+          getAccessToken: this._getToken,
         },
       });
     }
@@ -90,8 +90,7 @@ export class OutlookService {
   async listUsers() {
     try {
       const client = await this.getGraphClient();
-      const users = await client
-        .api('/users').get();
+      const users = await client.api('/users').get();
       console.log('Users:', users.value);
       return users.value;
     } catch (error) {
