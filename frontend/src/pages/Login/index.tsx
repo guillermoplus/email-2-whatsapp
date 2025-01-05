@@ -34,6 +34,7 @@ const LoginPage: React.FC = memo(() => {
               feedback={false}
               placeholder="Ingrese su contraseña"
               className="w-full mt-1"
+              inputClassName="w-full"
             />
           </div>
           {/* Botón de Iniciar Sesión */}
