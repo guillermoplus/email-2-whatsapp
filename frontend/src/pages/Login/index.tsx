@@ -1,10 +1,12 @@
-const LoginPage: React.FC = () => {
-    return (
-        <div>
-        <h1>Login</h1>
-        </div>
-    )
-}
+import { memo } from 'react'
+
+const LoginPage: React.FC = memo(() => {
+  return (
+    <div>
+      <h1>Login</h1>
+    </div>
+  )
+})
 
 LoginPage.displayName = 'LoginPage'
 
