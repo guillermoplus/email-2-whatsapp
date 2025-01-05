@@ -4,9 +4,9 @@ import { RouterProvider } from 'react-router'
 import ErrorBoundary from './components/ErrorBoundary'
 import router from './router'
 
-import 'primereact/resources/themes/lara-light-indigo/theme.css' // Tema de PrimeReact
-import 'primereact/resources/primereact.min.css' // Estilos principales de PrimeReact
-import 'primeicons/primeicons.css' // Íconos de PrimeIcons
+import 'primeicons/primeicons.css'
+import 'primereact/resources/primereact.min.css'
+import 'primereact/resources/themes/lara-light-cyan/theme.css'
 
 const App: React.FC = () => (
   <ErrorBoundary>
