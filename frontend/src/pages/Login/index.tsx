@@ -48,8 +48,12 @@ const LoginPage: React.FC = memo(() => {
         </form>
         {/* Botones adicionales */}
         <div className="flex flex-col items-center mt-4 space-y-2">
-          <Button label="Registrarse" className="p-button-text" />
-          <Button label="¿Olvidó su contraseña?" className="p-button-text" />
+          <Button link label="Registrarse" className="p-button-text" />
+          <Button
+            link
+            label="¿Olvidó su contraseña?"
+            className="p-button-text"
+          />
         </div>
       </div>
     </div>
