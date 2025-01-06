@@ -1,9 +1,20 @@
-import { memo } from 'react'
+import React, { memo } from 'react'
 import { InputText } from 'primereact/inputtext'
 import { Password } from 'primereact/password'
 import { Button } from 'primereact/button'
+import { useAuth } from '@/router/AuthProvider'
+import { useNavigate } from 'react-router'
 
 const LoginPage: React.FC = memo(() => {
+  const navigate = useNavigate()
+  const { login } = useAuth()
+
+  // TODO: Testing purposes
+  const loginAsAdmin = ($event: React.MouseEvent<HTMLButtonElement>) => {
+    $event.preventDefault()
+    login(['admin:fullAccess'])
+    navigate('/dashboard', { replace: true })
+  }
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-lg">
@@ -40,6 +51,7 @@ const LoginPage: React.FC = memo(() => {
           {/* Botón de Iniciar Sesión */}
           <div className="flex justify-center">
             <Button
+              onClick={loginAsAdmin}
               label="Iniciar Sesión"
               icon="pi pi-sign-in"
               className="w-full"
