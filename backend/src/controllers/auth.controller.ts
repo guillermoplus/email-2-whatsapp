@@ -1,7 +1,10 @@
+import 'reflect-metadata';
 import { AuthService } from '../services/auth.service';
 import { TokenRepository } from '../database/repositories/token.repository';
 import { WhatsAppService } from '../services/whatsapp.service';
+import { Get, JsonController } from 'routing-controllers';
 
+@JsonController('/auth')
 export class AuthController {
   private readonly _authService: AuthService;
   private readonly _tokenRepository: TokenRepository;
@@ -13,26 +16,22 @@ export class AuthController {
     this._whatsappService = opts.whatsappService;
   }
 
+  @Get('/whatsapp/login')
   async whatsappLogin(req: any, res: any) {
-    try {
-      if (this._whatsappService.isAuthenticated) {
-        res.send('WhatsApp client is already authenticated.');
-        return;
-      }
-      await this._whatsappService.initialize();
-      const qrCode = this._whatsappService.qrCodeImage;
-      res.send(`
-        <div style="text-align: center;">
-            <h1>Scan the QR code to authenticate WhatsApp</h1>
-            <img src="${qrCode}" alt="QR Code" />
-        </div>
-      `);
-    } catch (error) {
-      console.error('Error:', error);
-      res.status(500).send('Internal server error.');
+    if (this._whatsappService.isAuthenticated) {
+      return {
+        message: 'WhatsApp client is already authenticated.',
+      };
     }
+    await this._whatsappService.initialize();
+    const qrCode = this._whatsappService.qrCodeImage;
+    return {
+      message: 'Scan the QR code to authenticate WhatsApp',
+      data: qrCode,
+    };
   }
 
+  @Get('/outlook/login')
   async login(req: any, res: any) {
     try {
       const state = Math.random().toString(36).substring(7);
@@ -44,6 +43,7 @@ export class AuthController {
     }
   }
 
+  @Get('/outlook/login/callback')
   async callback(req: any, res: any) {
     try {
       const code: string = req.query.code;

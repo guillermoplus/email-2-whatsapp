@@ -15,7 +15,7 @@ export class WhatsAppService {
       authStrategy: new LocalAuth(),
       puppeteer: {
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        // args: ['--no-sandbox', '--disable-setuid-sandbox'], // TODO: Remove it because this generate problems
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
       },
     });
@@ -68,9 +68,7 @@ export class WhatsAppService {
         .catch((error) => {
           console.error('Error generating QR code as image:', error);
         });
-      console.log(
-        'Scan the QR code with your phone to authenticate the WhatsApp client'
-      );
+      console.log('Scan the QR code with your phone to authenticate the WhatsApp client');
     });
 
     this._client.on('ready', () => {
@@ -97,9 +95,7 @@ export class WhatsAppService {
         console.log(`Reconnection attempt ${this._reconnectionAttempts}`);
         await this.initialize();
       } else {
-        console.error(
-          'Max reconnection attempts reached. Please check the service manually.'
-        );
+        console.error('Max reconnection attempts reached. Please check the service manually.');
       }
     });
   }
@@ -110,7 +106,9 @@ export class WhatsAppService {
   }
 
   private clearSession() {
-    this._client?.destroy().then();
+    if (this._client.pupBrowser) {
+      this._client?.destroy().then();
+    }
     this._isAuthenticated = false;
     this._qrCodeImage = '';
 
