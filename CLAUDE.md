@@ -10,6 +10,21 @@ El backend automatiza un flujo concreto: buscar en Outlook (Microsoft Graph) un 
 
 ## Comandos
 
+### Antes de ejecutar cualquier comando: verifica la versión de Node
+
+Ningún `package.json` declara `engines` ni `packageManager`, y la versión de Node por defecto de la máquina puede ser demasiado antigua para pnpm (pnpm 10 exige Node >= 18.12). **Comprueba primero si hay `nvm` instalado y selecciona una versión adecuada**:
+
+```sh
+nvm list          # versiones disponibles (nvm4w en Windows)
+nvm use 22        # o la LTS más reciente que esté instalada
+node --version    # confirmar antes de seguir
+```
+
+Si `nvm use` no puede cambiar la versión global (falta de permisos en Windows), invoca el binario directamente:
+`"$HOME/AppData/Local/nvm/v<version>/node.exe" <script>`.
+
+Objetivo del proyecto: **Node 22 LTS** (Node 20 llegó a EOL en abril de 2026). El Dockerfile del backend aún usa `node:20-alpine` y `frontend/package.json` fija `volta.node: 20.16.0`; ver `PLAN-VULNERABILIDADES.md`.
+
 ### Backend (`cd backend`)
 ```sh
 pnpm install
@@ -67,3 +82,7 @@ Partiendo de la plantilla `laststance/create-react-app-vite` (su `README.md`, LI
 ## Licencia
 
 Backend AGPL v3 con restricción de uso comercial (ver `backend/README.md`); el `LICENSE` MIT de `frontend/` proviene de la plantilla.
+
+## Estado de dependencias
+
+`PLAN-VULNERABILIDADES.md` (raíz) lleva el plan por fases para las vulnerabilidades reportadas por Dependabot y su avance. Consúltalo y actualiza sus casillas antes de tocar dependencias.
