@@ -2,7 +2,15 @@ import 'reflect-metadata';
 import { AuthService } from '../services/auth.service';
 import { TokenRepository } from '../database/repositories/token.repository';
 import { WhatsAppService } from '../services/whatsapp.service';
-import { Get, JsonController } from 'routing-controllers';
+import {
+  BadRequestError,
+  Get,
+  InternalServerError,
+  JsonController,
+  QueryParam,
+  Res,
+} from 'routing-controllers';
+import { Response } from 'express';
 
 @JsonController('/auth')
 export class AuthController {
@@ -17,7 +25,7 @@ export class AuthController {
   }
 
   @Get('/whatsapp/login')
-  async whatsappLogin(req: any, res: any) {
+  async whatsappLogin() {
     if (this._whatsappService.isAuthenticated) {
       return {
         message: 'WhatsApp client is already authenticated.',
@@ -31,40 +39,34 @@ export class AuthController {
     };
   }
 
+  /**
+   * Redirects to the Microsoft consent screen.
+   * The response object must be returned as-is: routing-controllers only skips
+   * sending its own body when the action returns the very same response
+   * instance, and Express 4's res.redirect() returns undefined.
+   */
   @Get('/outlook/login')
-  async login(req: any, res: any) {
-    try {
-      const state = Math.random().toString(36).substring(7);
-      const authUrl = this._authService.getAuthUrl(state);
-      res.redirect(authUrl);
-    } catch (error) {
-      console.error('Error:', error);
-      res.status(500).send('Internal server error.');
-    }
+  async login(@Res() res: Response) {
+    const state = Math.random().toString(36).substring(7);
+    const authUrl = this._authService.getAuthUrl(state);
+    res.redirect(authUrl);
+    return res;
   }
 
   @Get('/outlook/login/callback')
-  async callback(req: any, res: any) {
-    try {
-      const code: string = req.query.code;
-      if (!code) {
-        res.status(400).send('Code is required.');
-        return;
-      }
-      const tokenData = await this._authService.getToken(code);
-      const token = tokenData?.access_token;
-      if (!tokenData || !token) {
-        res.status(500).send('Failed to get token.');
-        return;
-      }
-      await this._tokenRepository.save(tokenData);
-      process.env.TOKEN = token;
-      res.send({
-        message: 'Token retrieved and set successfully!',
-      });
-    } catch (error) {
-      console.error('Error:', error);
-      res.status(500).send('Internal server error.');
+  async callback(@QueryParam('code') code: string) {
+    if (!code) {
+      throw new BadRequestError('Code is required.');
     }
+    const tokenData = await this._authService.getToken(code);
+    const token = tokenData?.access_token;
+    if (!tokenData || !token) {
+      throw new InternalServerError('Failed to get token.');
+    }
+    await this._tokenRepository.save(tokenData);
+    process.env.TOKEN = token;
+    return {
+      message: 'Token retrieved and set successfully!',
+    };
   }
 }
