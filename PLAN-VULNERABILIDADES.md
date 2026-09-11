@@ -17,6 +17,7 @@ Marca las casillas a medida que avances y actualiza el estado de cada fase.
 |---|---|---|---|---|
 | 2026-09-11 | Línea base | 4 / 68 / 43 / 12 = **127** | 4 / 48 / 34 / 8 = **94** | **221** |
 | 2026-09-11 | Tras Fase 1 | 3 / 51 / 19 / 10 = **83** (−44) | 4 / 48 / 34 / 8 = **94** | **177** |
+| 2026-09-11 | Tras Fase 2 | 2 / 41 / 18 / 7 = **68** (−15) | 4 / 48 / 34 / 8 = **94** | **162** |
 
 ## Cómo reproducir la auditoría
 
@@ -116,17 +117,24 @@ Ninguno de los tres entra en el alcance de este plan, pero el primero invalida e
 
 ## Fase 2 — Backend: lo realmente expuesto en red
 
-**Estado:** ⬜ pendiente · **Riesgo funcional:** bajo
+**Estado:** ✅ **completada 2026-09-11** · **Impacto real: −15 avisos (83 → 68)** · Sin regresiones
 
 | Cambio | Arregla | Compatibilidad verificada |
 |---|---|---|
 | `routing-controllers` 0.10.4 → **0.11.3** | koa 2.15.3 (crítica ReDoS + alta Host Header Injection), glob, brace-expansion | Sus optionalDeps pasan a `koa@^3` (fuera del rango vulnerable) y `glob@^11`. Peers siguen siendo `class-validator ^0.14.1` / `class-transformer ^0.5.1`. El código solo usa `@JsonController`, `@Get`, `createExpressServer`, `useContainer` e `IocAdapter`: API sin cambios |
 | `express` 4.21.1 → **4.22.2** | path-to-regexp ReDoS (2 altas) | Sigue en 4.x; `~0.1.12` ya resuelve el parche 0.1.13. **No saltar a Express 5**: rompe routing-controllers 0.11, que declara `express ^4.21.2` |
 | `class-validator` 0.14.1 → **0.14.4** | validator (alta) | Minor. **No subir a 0.15.1**: rompe el peer de routing-controllers |
-| `@azure/identity` 4.5.0 → **4.13.2** | jws, verificación incorrecta de HMAC (2 altas) | Minor; solo se usa `ClientSecretCredential` |
+| ~~`@azure/identity` 4.5.0 → 4.13.2~~ → **eliminado** | jws, verificación incorrecta de HMAC (2 altas) | **No se bumpeó: se borró.** Es peer *opcional* de `@microsoft/microsoft-graph-client`, y el código no lo usaba: `src/services/azure-identity.service.ts` nunca se importaba, y el constructor de `OutlookService` creaba un `ClientSecretCredential` en una variable local que descartaba. El token real llega por el callback `setGetToken()` desde el job |
 
-- [ ] Aplicar los cuatro bumps
-- [ ] Verificar: `pnpm build`, arranque del servidor y las tres pruebas de endpoint ya establecidas — `GET /api/auth/outlook/login` → 302 a Microsoft, `GET /api/auth/outlook/login/callback` sin code → 400, ruta inexistente → 404, sin errores en el log
+- [x] Aplicar los bumps de routing-controllers, express y class-validator
+- [x] Borrar `src/services/azure-identity.service.ts` y el `ClientSecretCredential` muerto de `OutlookService`; `pnpm remove @azure/identity`
+- [x] Verificar: `pnpm build`, arranque del servidor y las pruebas de endpoint — `login` → 302, `callback` sin code → 400, `login` de nuevo → 302 (el servidor sigue vivo), ruta inexistente → 404, cero `ERR_HTTP_HEADERS_SENT`
+
+**Confirmado en el árbol resultante:** `koa` 2.15.3 desaparece (entra `koa@3.2.1`, fuera del rango vulnerable), `path-to-regexp` pasa a 0.1.13 y `validator` a 13.15.35.
+
+**Comprobación específica de la subida de routing-controllers:** el `res.redirect(...); return res;` de `AuthController.login` depende de que `ExpressDriver.handleSuccess` haga short-circuit al recibir la misma instancia de response. Sigue funcionando en 0.11.3 (302 correcto, sin `ERR_HTTP_HEADERS_SENT`).
+
+**Críticas restantes (2), ambas fuera del alcance de esta fase:** `tar` vía `sqlite3` (Fase 3) y `basic-ftp` vía `puppeteer` (Fase 4.1).
 
 ---
 

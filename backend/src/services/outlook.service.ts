@@ -1,5 +1,4 @@
 import { Client } from '@microsoft/microsoft-graph-client';
-import { ClientSecretCredential } from '@azure/identity';
 
 /**
  * Filter object for email search.
@@ -25,17 +24,8 @@ export class OutlookService {
   private _grahpClient: Client | undefined;
   private _getToken: (() => Promise<string>) | undefined;
 
-  private CLIENT_ID = process.env.AZURE_CLIENT_ID ?? '';
-  private TENANT_ID = process.env.AZURE_TENANT_ID ?? '';
-  private CLIENT_SECRET = process.env.AZURE_CLIENT_SECRET ?? '';
-
-  constructor() {
-    const credential = new ClientSecretCredential(
-      this.TENANT_ID,
-      this.CLIENT_ID,
-      this.CLIENT_SECRET
-    );
-  }
+  // The access token is supplied by the caller through setGetToken(); this
+  // service does not authenticate on its own.
 
   setGetToken(callback: () => Promise<string>) {
     this._getToken = callback;
