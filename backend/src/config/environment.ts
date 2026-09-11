@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import { OUTLOOK_CALLBACK_PATH } from "./routes";
 
 /**
  * Build the environment object with the environment variables.
@@ -51,6 +52,12 @@ const validateEnvironmentVariables = () => {
     throw new Error('AZURE_CLIENT_SECRET is not defined in environment variables');
   } else if (!variables.azure.redirectUri) {
     throw new Error('AZURE_REDIRECT_URI is not defined in environment variables');
+  } else if (!variables.azure.redirectUri.endsWith(OUTLOOK_CALLBACK_PATH)) {
+    // Must match the redirect URI registered in the Azure app registration,
+    // otherwise Microsoft redirects to a route this server does not serve.
+    throw new Error(
+      `AZURE_REDIRECT_URI must end with ${OUTLOOK_CALLBACK_PATH}, got ${variables.azure.redirectUri}`
+    );
   }
 
   // Outlook

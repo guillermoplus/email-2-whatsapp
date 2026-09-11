@@ -11,8 +11,9 @@ import {
   Res,
 } from 'routing-controllers';
 import { Response } from 'express';
+import { AUTH_ROUTE, OUTLOOK_CALLBACK_ROUTE } from '../config/routes';
 
-@JsonController('/auth')
+@JsonController(AUTH_ROUTE)
 export class AuthController {
   private readonly _authService: AuthService;
   private readonly _tokenRepository: TokenRepository;
@@ -53,7 +54,7 @@ export class AuthController {
     return res;
   }
 
-  @Get('/outlook/login/callback')
+  @Get(OUTLOOK_CALLBACK_ROUTE)
   async callback(@QueryParam('code') code: string) {
     if (!code) {
       throw new BadRequestError('Code is required.');

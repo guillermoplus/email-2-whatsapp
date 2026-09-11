@@ -11,6 +11,7 @@ import environment from './config/environment';
 import { MessageRepository } from './database/repositories/message.repository';
 import { createExpressServer, useContainer } from 'routing-controllers';
 import { AwilixAdapter } from './adapters/awilix.adapter';
+import { API_PREFIX } from './config/routes';
 
 export const dependencyContainer = createContainer({
   injectionMode: InjectionMode.PROXY,
@@ -49,7 +50,7 @@ const initServer = async (preloadedDependencies: { dbConnection: SqliteDatabase 
 
   const app = createExpressServer({
     controllers: [AuthController],
-    routePrefix: '/api',
+    routePrefix: API_PREFIX,
   });
 
   const PORT = process.env.PORT || 3072;

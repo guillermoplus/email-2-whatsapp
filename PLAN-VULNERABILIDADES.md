@@ -90,14 +90,27 @@ Sin ganancia: quitar `body-parser` como dependencia directa no lo saca del árbo
 
 **Dos defectos preexistentes detectados al verificar, ajenos a las dependencias:**
 
-1. **`GET /api/auth/outlook/login` devuelve HTTP 500.** `AuthController.login`, `callback` y `whatsappLogin` declaran `(req: any, res: any)` sin los decoradores `@Req()` / `@Res()`, así que routing-controllers les pasa `undefined` y revienta en `res.redirect` (`TypeError: Cannot read properties of undefined (reading 'redirect')`). Roto desde la migración a routing-controllers (commit `f9478ed`); el código comentado en `src/index.ts` muestra que antes se montaban a mano sobre Express, donde sí funcionaban. **El flujo OAuth de Outlook está caído hoy.**
+1. ~~**`GET /api/auth/outlook/login` devuelve HTTP 500.**~~ **✅ Corregido (2026-09-11)** antes de empezar la Fase 2, porque bloqueaba su verificación. `AuthController.login`, `callback` y `whatsappLogin` declaraban `(req: any, res: any)` sin los decoradores `@Req()` / `@Res()`, así que routing-controllers les pasaba `undefined` y reventaba en `res.redirect`. Roto desde la migración a routing-controllers (commit `f9478ed`).
+
+   Solución: `login` recibe `@Res() res: Response` y **devuelve `res`** — `ExpressDriver.handleSuccess` solo omite enviar su propio cuerpo cuando la acción retorna la misma instancia de response, y `res.redirect()` de Express 4 devuelve `undefined` (devolver su resultado provocaba `ERR_HTTP_HEADERS_SENT` y mataba el proceso tras responder el 302). `callback` pasa a `@QueryParam('code')` y lanza `BadRequestError` / `InternalServerError` en vez de manipular `res`. `whatsappLogin` ya no declara parámetros.
+
+   Verificado: `login` → 302 a Microsoft, `callback` sin code → 400, ruta inexistente → 404, y el servidor sigue vivo tras las tres peticiones sin errores en el log.
 2. **`WhatsAppService` tumba el proceso al arrancar.** Su constructor llama a `initialize()` encadenando `.then()` sin `.catch()`; si Chromium no está disponible, la promesa rechazada sin manejar mata el servidor (Node ≥15). Localmente pasa por no tener navegador descargado; en Docker se salva porque `PUPPETEER_EXECUTABLE_PATH` apunta al Chromium de Alpine.
 
 3. **`refresh-token.job` guarda respuestas de error como si fueran tokens.** `AuthService.refreshToken` devuelve el JSON de Microsoft sin mirar el código HTTP, y el job hace `tokenRepository.save(newToken)` y loguea "Token refreshed successfully!" aunque la respuesta sea un error. En la prueba de arranque quedó registrado un fallo `AADSTS7000222` seguido de ese log de éxito: se insertó una fila con `access_token` nulo que pasa a ser "el token más reciente" y rompe el job de envío.
 
 Ninguno de los tres entra en el alcance de este plan, pero el primero invalida el paso de verificación de la Fase 2: hay que arreglar los decoradores antes de poder comprobar que el endpoint redirige.
 
-**Aparte (operativo, no es código):** el secreto de cliente de Azure está **expirado** (`AADSTS7000222`), así que el flujo de Outlook no puede renovar tokens hasta que se genere uno nuevo en el portal.
+**Aparte (operativo, no es código):**
+
+- El secreto de cliente de Azure está **expirado** (`AADSTS7000222`), así que el flujo de Outlook no puede renovar tokens hasta que se genere uno nuevo en el portal.
+- ~~**`AZURE_REDIRECT_URI` no coincide con la ruta real.**~~ **✅ Resuelto (2026-09-11).** El `.env` apuntaba a `/api/outlook/login/callback` mientras la ruta real era `/api/auth/outlook/login/callback`. Se optó por conservar la ruta (el prefijo `/auth` agrupa los dos flujos de autenticación) y alinear la configuración:
+  - En Azure: registrado el redirect URI nuevo y **borrado el viejo**; secreto de cliente regenerado.
+  - `src/config/routes.ts` (módulo nuevo, sin dependencias) define `API_PREFIX`, `AUTH_ROUTE`, `OUTLOOK_CALLBACK_ROUTE` y el derivado `OUTLOOK_CALLBACK_PATH`. `index.ts` (`routePrefix`), `AuthController` (`@JsonController` y `@Get`) y `environment.ts` consumen esas constantes, así que el path deja de estar duplicado.
+  - `validateEnvironmentVariables()` falla al arranque si `AZURE_REDIRECT_URI` no termina en `OUTLOOK_CALLBACK_PATH`, con el valor recibido en el mensaje.
+  - `.env.example` reescrito con las 17 variables reales (antes solo listaba dos, ninguna obligatoria) y `README.md` actualizado.
+
+  Verificado: con el valor viejo el arranque aborta con `AZURE_REDIRECT_URI must end with /api/auth/outlook/login/callback, got ...`; con el corregido el servidor arranca y el `redirect_uri` que viaja a Microsoft es ya `/api/auth/outlook/login/callback`. **Falta la vuelta completa del OAuth** (requiere iniciar sesión en el navegador con la cuenta real).
 
 ---
 
@@ -113,7 +126,7 @@ Ninguno de los tres entra en el alcance de este plan, pero el primero invalida e
 | `@azure/identity` 4.5.0 → **4.13.2** | jws, verificación incorrecta de HMAC (2 altas) | Minor; solo se usa `ClientSecretCredential` |
 
 - [ ] Aplicar los cuatro bumps
-- [ ] Verificar: `pnpm build` y arranque del servidor. `GET /api/auth/outlook/login` **no sirve como prueba mientras no se arreglen los decoradores `@Req()`/`@Res()`** (ver hallazgos de la Fase 1); comprobar en su lugar que las rutas quedan registradas y que el servidor responde
+- [ ] Verificar: `pnpm build`, arranque del servidor y las tres pruebas de endpoint ya establecidas — `GET /api/auth/outlook/login` → 302 a Microsoft, `GET /api/auth/outlook/login/callback` sin code → 400, ruta inexistente → 404, sin errores en el log
 
 ---
 

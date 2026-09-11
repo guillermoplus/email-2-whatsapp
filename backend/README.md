@@ -24,17 +24,19 @@ This project is designed to integrate email services with WhatsApp, allowing use
     pnpm install
     ```
 
-3. Create a `.env` file in the root directory and add the following environment variables:
-    ```env
-    PORT=3072
-    AZURE_TENANT_ID=your-tenant-id
-    AZURE_CLIENT_ID=your-client-id
-    AZURE_CLIENT_SECRET=your-client-secret
-    AZURE_REDIRECT_URI=https://example.com/auth/callback
-    OUTLOOK_AUTH_URL=https://login.microsoftonline.com/common/oauth2/v2.0/authorize
-    OUTLOOK_TOKEN_URL=https://login.microsoftonline.com/common/oauth2/v2.0/token
-    OUTLOOK_SCOPE=Mail.Read offline_access IMAP.AccessAsUser.All User.Read.All
+3. Copy `.env.example` to `.env` and fill in the values:
+    ```sh
+    cp .env.example .env
     ```
+
+   All variables in that file are mandatory except `WHATSAPP_MESSAGE` and
+   `PUPPETEER_EXECUTABLE_PATH`; the server refuses to start if any is missing.
+
+   `AZURE_REDIRECT_URI` must end with **`/api/auth/outlook/login/callback`** and
+   match the Redirect URI registered in Azure (App registrations > Authentication >
+   Web) character for character. That path is built from the constants in
+   `src/config/routes.ts` and checked at startup, so changing the route means
+   updating Azure and `.env` as well.
 
 ## Usage
 
