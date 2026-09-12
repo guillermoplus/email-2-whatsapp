@@ -21,7 +21,7 @@
     "cron": "^3.1.7",
     "dotenv": "^16.4.5",
     "express": "^4.22.2",
-    "puppeteer": "^23.6.0",
+    "puppeteer": "^25.10.0",
     "qrcode": "^1.5.4",
     "reflect-metadata": "^0.2.2",
     "routing-controllers": "^0.11.3",
@@ -60,7 +60,9 @@
       "@babel/core": "^7.29.6",
       "@babel/helpers": "^7.26.10",
       "@babel/runtime": "^7.26.10",
-      "body-parser@1": "^1.20.6"
+      "body-parser@1": "^1.20.6",
+      "node-gyp": "^11.4.2",
+      "socks": "^2.8.10"
     }
   }
 }

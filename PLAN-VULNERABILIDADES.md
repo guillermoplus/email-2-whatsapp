@@ -19,6 +19,7 @@ Marca las casillas a medida que avances y actualiza el estado de cada fase.
 | 2026-09-11 | Tras Fase 1 | 3 / 51 / 19 / 10 = **83** (−44) | 4 / 48 / 34 / 8 = **94** | **177** |
 | 2026-09-11 | Tras Fase 2 | 2 / 41 / 18 / 7 = **68** (−15) | 4 / 48 / 34 / 8 = **94** | **162** |
 | 2026-09-11 | Tras Fase 3 | 0 / 3 / 1 / 1 = **5** (−63) | 4 / 48 / 34 / 8 = **94** | **99** |
+| 2026-09-11 | Tras Fase 4.1 | 0 / 2 / 0 / 0 = **2** (−3) | 4 / 48 / 34 / 8 = **94** | **96** |
 
 ## Cómo reproducir la auditoría
 
@@ -251,18 +252,42 @@ El de `tar` es el único que cruza un mayor (6 → 7): `sqlite3` lo declara como
 
 ## Fase 4 — Backend: cambios con riesgo funcional (un commit por cada uno)
 
-**Estado:** ⬜ pendiente · **Riesgo funcional:** alto — requiere prueba manual
+**Estado:** 4.1 ✅ completada 2026-09-11 (−3 avisos, 5 → 2) · 4.2 ⬜ pendiente, requiere prueba manual
 
-### 4.1 `puppeteer` 23.6 → 25.10
+### 4.1 `puppeteer` 23.6 → 25.10 ✅
 
-Arregla basic-ftp, tar-fs, js-yaml, ip-address y las dos advisories de `extract-zip` que **no tienen parche disponible** (solo se resuelven porque puppeteer moderno ya no lo usa). La API usada (`launch`, `goto`, `evaluate`, `setViewport`, `screenshot`) es estable.
+**Corrección respecto a la planificación original:** este bump **no arregla `extract-zip` ni `ip-address`**. La atribución del `pnpm audit` señalaba «puppeteer» como origen, pero con las rutas completas se ve que ambos venían de otro sitio:
 
-- [ ] Bump
-- [ ] Verificar la conversión HTML→PNG del job dentro del contenedor (Chromium de Alpine)
+```
+extract-zip  ->  .>whatsapp-web.js>puppeteer@18.2.1>puppeteer-core@18.2.1>extract-zip
+ip-address   ->  .>sqlite3>node-gyp>make-fetch-happen>socks-proxy-agent>socks>ip-address
+```
+
+`basic-ftp`, `tar-fs` y `js-yaml` ya los había cerrado la Fase 3 con overrides. El bump se mantiene igualmente por higiene (la 23.x es antigua), pero su aporte al conteo es cero.
+
+Lo que sí bajó el conteo fueron dos overrides añadidos al investigar el origen real:
+
+- **`node-gyp: ^11.4.2`** — la 8.4.1 que declara `sqlite3` arrastraba `@tootallnate/once@1.1.2`, sin parche en su línea 1.x.
+- **`socks: ^2.8.10`** — es la forma correcta de cerrar `ip-address`: la 2.8.10 ya depende de `ip-address@^10.1.1`, así que no hace falta forzarle a `socks` una API que no espera (era la razón por la que en la Fase 3 se descartó el override directo de `ip-address`).
+
+- [x] Bump a `puppeteer@25.10.0` (exige **Node ≥22.12**, cubierto por la Fase 0)
+- [x] Overrides `node-gyp` y `socks`
+- [x] Verificar la conversión HTML→PNG del job dentro del contenedor
+
+**Verificación:** se reprodujo `convertHtmlToImage()` tal cual — `launch` → `goto file://` → `evaluate` de dimensiones → `setViewport` → `screenshot({fullPage})`:
+
+| Entorno | Resultado |
+|---|---|
+| Local (Windows, Node 22) | viewport 800×600, PNG de 7417 bytes, Chrome/152.0.7977.75 |
+| Contenedor Alpine (Chromium del sistema) | viewport 800×600, PNG de 7841 bytes, Chrome/152.0.7977.82 |
+
+Además: `pnpm build` ✅, build de Docker `--no-cache` ✅, servidor local 302/400/404/302 sin errores ✅.
 
 ### 4.2 `whatsapp-web.js` 1.26 → 1.34.7
 
 El cambio más delicado. Arrastra su propio `puppeteer@24.38.0`; hoy arrastra el **18.2.1**, origen de 6 avisos. `Client`, `LocalAuth`, `MessageMedia` y `sendMessage` no cambian de firma, pero toca internals de WhatsApp Web. La versión actual tiene ~2 años y es probable que ya falle contra el WhatsApp Web vigente.
+
+**Ahora es la única fuente de avisos del backend:** las 2 altas de `extract-zip` que quedan (sin versión parcheada) salen de su `puppeteer@18.2.1` anidado.
 
 - [ ] Bump
 - [ ] Re-escanear el QR en `GET /api/auth/whatsapp/login`
