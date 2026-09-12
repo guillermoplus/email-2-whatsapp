@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Monorepo informal (sin workspaces): `backend/` y `frontend/` son dos proyectos pnpm independientes, cada uno con su propio `package.json`, `.env`, tsconfig y toolchain. Siempre ejecuta los comandos desde el subdirectorio correspondiente.
+Monorepo informal (sin workspaces): `backend/` y `frontend/` son dos proyectos pnpm independientes, cada uno con su propio `package.json`, tsconfig y toolchain. Siempre ejecuta los comandos desde el subdirectorio correspondiente. Ambos fijan `packageManager` (pnpm 10.8.1) y Node 22.
+
+**Ojo con pnpm 10:** ignora por defecto los scripts de instalación, así que cada proyecto declara en `pnpm.onlyBuiltDependencies` los paquetes que sí los necesitan (`sqlite3` y `puppeteer` en el backend; `esbuild`, `@tailwindcss/oxide` y `oxlint` en el frontend). Sin eso, el binding nativo de sqlite3 no se compila y la app no arranca.
 
 El backend automatiza un flujo concreto: buscar en Outlook (Microsoft Graph) un correo con cierta palabra clave, renderizar su HTML a PNG con Puppeteer y enviarlo por WhatsApp a un número fijo, una vez al mes.
 
@@ -37,15 +39,14 @@ No hay tests (`pnpm test` falla a propósito) ni linter; solo Prettier (`.pretti
 ### Frontend (`cd frontend`)
 ```sh
 pnpm install
-pnpm dev                       # Vite en http://localhost:3000
-pnpm test                      # vitest --run
-pnpm test -- src/App.test.tsx  # un solo archivo
-pnpm test:watch                # modo watch
-pnpm lint / pnpm lint:fix      # eslint -c eslint.config.mjs
-pnpm typecheck                 # tsc --noEmit
-pnpm validate                  # test + lint:fix + typecheck + build en paralelo
+pnpm dev                          # Vite en http://localhost:3000
+pnpm test                         # vitest --run
+pnpm test -- ProtectedRoute       # filtrar por nombre de archivo
+pnpm test:watch
+pnpm lint / pnpm lint:fix         # oxlint
+pnpm typecheck                    # tsc -b --noEmit
+pnpm validate                     # test + lint + typecheck + build en paralelo
 ```
-`husky` + `lint-staged` corren Prettier en pre-commit.
 
 ## Arquitectura del backend
 
@@ -68,20 +69,19 @@ Cron en zona `America/Bogota`. Idempotencia por mes: consulta `messages` y no re
 
 ## Arquitectura del frontend
 
-Partiendo de la plantilla `laststance/create-react-app-vite` (su `README.md`, LICENSE y workflows de GitHub son de la plantilla, no del proyecto). React 19 + Vite + TypeScript, PrimeReact como librería de UI y TailwindCSS para layout.
+SPA de **React 19 sobre Vite 8**, con **PrimeReact** para la UI y **Tailwind 4** para el layout. Reconstruida desde cero el 2026-09-12: antes era la plantilla `laststance/create-react-app-vite` con el código del proyecto encima, y arrastraba 94 avisos de dependencias, CI muerta y una licencia MIT ajena. Solo se migraron los ~240 renglones propios.
 
-- Rutas en `src/router/router.tsx` (`createBrowserRouter`): `/` redirige a `/dashboard`, que va envuelto en `<Layout>` + `<ProtectedRoute>`; `/login` queda fuera del layout.
-- `src/router/AuthProvider.tsx` mantiene `isAuthenticated` y `permissions` solo en estado de React — **no hay persistencia ni llamadas al backend todavía**; `pages/Login` hace un login falso con `['admin:fullAccess']` (marcado `// TODO: Testing purposes`). Aún no existe cliente HTTP hacia la API del backend.
-- `ProtectedRoute` acepta `requiredPermissions` y exige que estén todos presentes.
-- Alias `@` → `src/` (definido en `vite.config.ts`, `vitest.config.ts` y `tsconfig.json`: los tres deben mantenerse sincronizados).
-- Variables de entorno estilo CRA: solo las prefijadas `REACT_APP_` y declaradas en `EnvironmentPlugin([...])` de `vite.config.ts` llegan al bundle.
-- MSW se arranca en `src/main.tsx` únicamente en desarrollo (handlers en `mocks/handlers.ts`); en producción la app monta sin mocks.
-- Tests con Vitest + Testing Library (globals activados, `src/setupTests.ts`), colocados junto al código (`*.test.ts(x)` bajo `src/`).
-- `src/pages/Index/` es la página de ejemplo de la plantilla y está duplicada en `src/pages/Dashboard/`; `Index` ya no está enrutada.
+- Rutas en `src/router/router.tsx` (`createBrowserRouter`): `/` redirige a `/dashboard`, que va envuelto en `<Layout>` + `<ProtectedRoute>`; `/login` queda fuera del layout. **Todos los imports de router salen de `react-router`**, no de `react-router-dom`: en la v7 ese segundo paquete es solo un shim de compatibilidad.
+- `src/router/AuthProvider.tsx` mantiene `isAuthenticated` y `permissions` en estado de React — **no hay persistencia ni llamadas al backend todavía**; `pages/Login` hace un login falso con `['admin:fullAccess']`. Aún no existe cliente HTTP hacia la API. El contexto y el hook `useAuth` viven aparte en `src/router/useAuth.ts` para que el provider exporte solo el componente (lo exige el fast refresh).
+- `ProtectedRoute` acepta `requiredPermissions` y exige que estén todos presentes. Es lo único con tests (`src/router/ProtectedRoute.test.tsx`).
+- Alias `@` → `src/`, declarado a la vez en `vite.config.ts` y `tsconfig.app.json`: **ambos deben mantenerse sincronizados**.
+- **`src/index.css` importa solo las capas `theme` y `utilities` de Tailwind, omitiendo `preflight`**, porque su reset pisa los estilos del tema "styled" de PrimeReact. Si añades `@import "tailwindcss"` a secas, los botones e inputs se rompen.
+- **`primereact` está fijado en 10.9.1**: la 11 eliminó `resources/themes/`, de donde sale el tema `tailwind-light` que importa `App.tsx`. Subir a la 11 obliga a migrar al sistema de design tokens.
+- Tests con Vitest 5 + Testing Library, configurados dentro de `vite.config.ts` (usa el `defineConfig` de `vitest/config`, no el de `vite`). Lint con **oxlint**, no ESLint.
 
 ## Licencia
 
-Backend AGPL v3 con restricción de uso comercial (ver `backend/README.md`); el `LICENSE` MIT de `frontend/` proviene de la plantilla.
+Todo el proyecto va bajo la AGPL v3 con restricción de uso comercial de la raíz (ver `backend/README.md`). El `LICENSE` MIT que tenía `frontend/` era de la plantilla y se eliminó en la reconstrucción.
 
 ## Estado de dependencias
 

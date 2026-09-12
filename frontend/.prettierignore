@@ -1,11 +1,2 @@
-.git
-node_modules
-.eslintignore
-.gitignore
-LICENSE
-build
 dist
-dist-ssr
-.all-contributorsrc
-.vscode
-.idea
+pnpm-lock.yaml

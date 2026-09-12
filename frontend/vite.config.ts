@@ -1,16 +1,15 @@
-import * as path from 'path'
+import path from 'node:path'
 
-import react from '@vitejs/plugin-react-swc'
-import { defineConfig } from 'vite'
-import EnvironmentPlugin from 'vite-plugin-environment'
+import tailwindcss from '@tailwindcss/vite'
+import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vitest/config'
 
-// https://vitejs.dev/config/
+// https://vite.dev/config/
 export default defineConfig({
+  plugins: [react(), tailwindcss()],
   build: {
     sourcemap: true,
   },
-  plugins: [react(), EnvironmentPlugin(['REACT_APP_TEXT'])],
-  publicDir: 'public',
   server: {
     host: true,
     port: 3000,
@@ -19,5 +18,11 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./src/setupTests.ts'],
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
   },
 })

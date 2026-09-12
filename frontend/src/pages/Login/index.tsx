@@ -2,7 +2,7 @@ import React, { memo } from 'react'
 import { InputText } from 'primereact/inputtext'
 import { Password } from 'primereact/password'
 import { Button } from 'primereact/button'
-import { useAuth } from '@/router/AuthProvider'
+import { useAuth } from '@/router/useAuth'
 import { useNavigate } from 'react-router'
 
 const LoginPage: React.FC = memo(() => {

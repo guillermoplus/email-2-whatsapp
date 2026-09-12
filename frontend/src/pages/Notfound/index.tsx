@@ -1,10 +1,8 @@
 import React, { memo } from 'react'
 
-import styles from './index.module.css'
-
 const Notfound: React.FC = memo(() => (
-  <div className={styles.container}>
-    <h1 className={styles.h1}>404: Page Not Found</h1>
+  <div className="min-h-screen">
+    <h1 className="text-6xl leading-none">404: Page Not Found</h1>
   </div>
 ))
 Notfound.displayName = 'Notfound'

@@ -21,6 +21,7 @@ Marca las casillas a medida que avances y actualiza el estado de cada fase.
 | 2026-09-11 | Tras Fase 3 | 0 / 3 / 1 / 1 = **5** (−63) | 4 / 48 / 34 / 8 = **94** | **99** |
 | 2026-09-11 | Tras Fase 4.1 | 0 / 2 / 0 / 0 = **2** (−3) | 4 / 48 / 34 / 8 = **94** | **96** |
 | 2026-09-11 | Tras Fase 4.2 | 0 / 2 / 0 / 0 = **2** (sin cambio) | 4 / 48 / 34 / 8 = **94** | **96** |
+| 2026-09-12 | Tras Fase 5 | 0 / 2 / 0 / 0 = **2** | 0 / 0 / 0 / 0 = **0** (−94) | **2** |
 
 ## Cómo reproducir la auditoría
 
@@ -327,32 +328,65 @@ En el arranque se vio al cron de comprobantes ejecutarse **antes** de que el cli
 
 ---
 
-## Fase 5 — Frontend
+## Fase 5 — Frontend: reconstruido en vez de parcheado
 
-**Estado:** ⬜ pendiente
+**Estado:** ✅ **completada 2026-09-12** · **Impacto real: −94 avisos (94 → 0)**
 
-### 5.1 Lo único que llega al navegador
+El plan original era bumpear `react-router`, `vite`, `vitest`, `jsdom`, `concurrently`, `rimraf`, `postcss`, el stack de eslint y `@testing-library/jest-dom`. Antes de ejecutarlo se evaluó reconstruir, y los números decidieron.
 
-| Cambio | Arregla | Compatibilidad |
+### Por qué reconstruir
+
+- **Código propio: ~240 de 901 líneas.** Login (77), AuthProvider (44), router (39), ProtectedRoute (33), más retoques en `App.tsx` y `main.tsx`. El resto era plantilla `laststance/create-react-app-vite`.
+- **`pages/Dashboard/` era una copia byte a byte de `pages/Index/`**, la página demo del template: solo cambiaba el nombre del componente, y el `displayName` seguía diciendo `'Index'`.
+- **Un scaffold nuevo con las mismas librerías da 0 avisos** — medido antes de decidir, no estimado.
+- **No había CI.** `frontend/.github/workflows/` estaba inerte: GitHub solo lee `.github/` en la raíz del repositorio, y ahí no existe. Cinco workflows y los badges del README llevaban sin ejecutarse desde siempre.
+- **`frontend/LICENSE` era MIT**, del autor del template, contradiciendo la AGPL v3 con restricción comercial de la raíz.
+- Dependencias declaradas y nunca importadas: `react-transition-group`, `cross-fetch`, `all-contributors-cli`. Más `.all-contributorsrc`, un `FUNDING.yml` apuntando al autor del template y `scripts/remove_tailwind.js`.
+- `husky` nunca se instalaba, `App.test.tsx` llevaba roto desde que se añadió el router, y las variables de entorno iban por el plumbing CRA (`REACT_APP_` vía `vite-plugin-environment`).
+
+Parchear habría dejado todo eso intacto.
+
+### Qué hay ahora
+
+| | Antes | Ahora |
 |---|---|---|
-| `react-router` + `react-router-dom` 7.1.1 → **7.18.3** | 9 altas (RCE de turbo-stream, XSS por open redirect, 2 DoS) | Minor dentro de 7.x; peer `react >=18` (hay 19). Se usan `createBrowserRouter`, `RouterProvider`, `Navigate`, `useNavigate`: sin cambios. Mantener **ambos paquetes en la misma versión** y desanclar el `7.1.1` fijo de `react-router-dom`. No pasar a v8 |
+| Build | Vite 6.0.7 | **Vite 8.3.0** |
+| Tests | Vitest 2.1.6, 3 rotos de 4 | **Vitest 5.0.0, 3 pasando de 3** |
+| Lint | ESLint 9 + `eslint-config-ts-prefixer` | **oxlint** |
+| CSS | Tailwind 3 + postcss + autoprefixer | **Tailwind 4** vía `@tailwindcss/vite` |
+| TypeScript | 5.7.2 | **6.0.3** |
+| Router | `react-router` + `react-router-dom` 7.1.1 | **`react-router` 7.18.3**, un solo paquete |
+| Avisos | 94 | **0** |
 
-- [ ] Bump de ambos paquetes
-- [ ] Verificar: `/` redirige a `/dashboard`, `/dashboard` sin sesión redirige a `/login`, y el login de prueba entra al dashboard
+`primereact` se mantiene **fijado en 10.9.1** a propósito: la 11 eliminó `resources/themes/`, de donde sale el tema `tailwind-light` que importa `App.tsx`. Migrar a su sistema de design tokens es una decisión aparte, no parte de esta fase.
 
-### 5.2 Tooling de desarrollo (agrupable en un commit)
+### Las dos trampas de la migración
 
-| Cambio | Arregla | Nota |
-|---|---|---|
-| `vite` 6.0.7 → **6.4.3** | 3 altas (lectura arbitraria vía WebSocket del dev server, bypass de `server.fs.deny`) + rollup ≥4.59 + postcss | Patch dentro de 6.x. **No saltar a Vite 8** |
-| `vitest` + `@vitest/ui` 2.1.6 → **3.2.7** | 2 críticas (RCE del API server, lectura de archivos del UI server) | v3 soporta `vite ^6`. El `vitest.config.ts` actual es válido en v3. Alternativa de mínimo riesgo: **2.1.9** cierra la crítica de RCE; la segunda solo aplica si se usa `pnpm test:ui` |
-| `jsdom` 25 → **26.1.0** | form-data (crítica), ws, tough-cookie | Solo entorno de tests |
-| `concurrently` → **9.2.4** | shell-quote (crítica) | Trae `shell-quote@1.9.0` exacto |
-| `rimraf` → **6.1.3**, `postcss` → **8.5.28**, stack de eslint | glob, minimatch, postcss | Rutinario |
-| `@testing-library/jest-dom` → **6.10.0** | lodash (alta) | Elimina lodash del árbol, pero **exige Node ≥22** (depende de la Fase 0) |
+1. **Tailwind 4 sin preflight.** El `global.css` viejo tenía `@tailwind base;` comentado porque el reset de Tailwind pisa el tema "styled" de PrimeReact. El equivalente en la v4 es importar solo dos capas:
 
-- [ ] Aplicar bumps
-- [ ] Verificar: `pnpm validate` (test + lint + typecheck + build)
+   ```css
+   @layer theme, base, components, utilities;
+   @import 'tailwindcss/theme.css' layer(theme);
+   @import 'tailwindcss/utilities.css' layer(utilities);
+   ```
+
+2. **Los enlaces de `node_modules` de pnpm son absolutos en Windows**, así que renombrar `frontend-new/` a `frontend/` los invalidó (`Cannot find package 'yargs'`). Hay que reinstalar tras mover un proyecto de sitio.
+
+### Verificación
+
+Se condujo un navegador real con Puppeteer contra el servidor de desarrollo:
+
+| Flujo | Resultado |
+|---|---|
+| `/` sin sesión | Redirige a `/login` |
+| Pulsar «Iniciar Sesión» | Navega a `/dashboard` con `admin:fullAccess` |
+| `/no-existe` | `404: Page Not Found` |
+| `/dashboard` sin sesión | Redirige a `/login` |
+| Errores de consola | **Ninguno** |
+
+Y la prueba decisiva de fidelidad visual: **la captura del login de la versión vieja y la de la nueva son idénticas byte a byte** (mismo MD5). La migración de Vite 6 + Tailwind 3 a Vite 8 + Tailwind 4 no cambió un píxel.
+
+`pnpm validate` (test + lint + typecheck + build) pasa entero, con **cero warnings** de lint. `App.test.tsx`, que probaba la demo del template, se sustituyó por `ProtectedRoute.test.tsx`, que prueba lógica real: redirección sin sesión, acceso tras iniciarla y bloqueo por permisos insuficientes.
 
 ---
 
@@ -360,6 +394,17 @@ En el arranque se vio al cron de comprobantes ejecutarse **antes** de que el cli
 
 **Estado:** ⬜ pendiente
 
-- [ ] Configurar `.github/dependabot.yml` en la raíz para que cubra `backend/` y `frontend/` (el actual vive en `frontend/.github/` y viene de la plantilla)
+- [ ] Crear `.github/` **en la raíz del repositorio** con workflows que cubran `backend/` y `frontend/`: hoy el proyecto no tiene CI ninguna
+- [ ] `.github/dependabot.yml` en la raíz apuntando a ambos directorios
 - [ ] Añadir `pnpm audit --prod` al CI para separar lo que llega a producción del ruido de tooling
-- [ ] Revisar restos de la plantilla `create-react-app-vite` sin usar (`all-contributors-cli`, `cross-fetch`, `ts-expect`, `src/pages/Index/` duplicado)
+- [x] ~~Revisar restos de la plantilla `create-react-app-vite`~~ — resuelto al reconstruir el frontend en la Fase 5
+
+## Pendientes conocidos, fuera del alcance de este plan
+
+Defectos preexistentes detectados durante las verificaciones y documentados en su fase:
+
+- **`WhatsAppService.clearSession()` borra la ruta hardcodeada `/app/.wwebjs_auth/session`** en cada `initialize()`. En Docker invalida la sesión persistida de `LocalAuth` y obliga a re-escanear el QR en cada reconexión.
+- **`WhatsAppService` puede tumbar el proceso**: su constructor encadena `initialize().then()` sin `.catch()`.
+- **`refresh-token.job` guarda respuestas de error como si fueran tokens**: `AuthService.refreshToken` no mira el código HTTP, así que un `AADSTS...` acaba insertado como «el token más reciente» con `access_token` nulo.
+- **Carrera en el arranque**: los cron jobs se registran de inmediato, pero `WhatsAppService` tarda ~30 s en estar listo.
+- **`extract-zip`**: las 2 altas que quedan en el backend. Sin versión parcheada y no alcanzables con `PUPPETEER_SKIP_DOWNLOAD=true`; ver Fase 4.2.

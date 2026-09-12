@@ -1,27 +1,14 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import './global.css'
-
-import App from './App'
 import { PrimeReactProvider } from 'primereact/api'
 
-const root = ReactDOM.createRoot(document.getElementById('root')!)
+import App from './App'
+import './index.css'
 
-// Setup MSW mock server in development
-if (process.env.NODE_ENV === 'development') {
-  // Certify MSW's Service Worker is available before start React app.
-  import('../mocks/browser')
-    .then(async ({ worker }) => {
-      return worker.start()
-    }) // Run <App /> when Service Worker is ready to intercept requests.
-    .then(() => {
-      root.render(
-        <PrimeReactProvider>
-          <App />
-        </PrimeReactProvider>,
-      )
-    })
-  // Never setup MSW mock server in production
-} else if (process.env.NODE_ENV === 'production') {
-  root.render(<App />)
-}
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <PrimeReactProvider>
+      <App />
+    </PrimeReactProvider>
+  </React.StrictMode>,
+)

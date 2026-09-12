@@ -1,0 +1,26 @@
+/*
+ * Tailwind 4 sin preflight: el reset de Tailwind pisa los estilos del tema
+ * "styled" de PrimeReact (botones, inputs). Importando solo las capas theme y
+ * utilities se consiguen las utilidades sin el reset — equivale al
+ * "@tailwind base" comentado que tenia la version anterior con Tailwind 3.
+ */
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+}
+
+.field .p-icon-field {
+  width: inherit;
+}

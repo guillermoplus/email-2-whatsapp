@@ -1,33 +1,23 @@
-import React, { memo, Suspense } from 'react'
+import React, { memo } from 'react'
+import { Button } from 'primereact/button'
 
-import Box from '../../components/Box'
-import Spinner from '../../components/Spinner'
-import logo from '../../logo.svg'
+import { useAuth } from '@/router/useAuth'
 
-import Counter from './Counter'
-import DocList from './DocList'
-import styles from './index.module.css'
+const Dashboard: React.FC = memo(() => {
+  const { permissions, logout } = useAuth()
 
-interface Props {}
-
-const Dashboard: React.FC<Props> = memo(() => {
   return (
-    <>
-      <Box>
-        <h1 className={styles.h1}>I'm REACT_APP_TEXT from .env</h1>
-        <img src={logo} alt="react-logo" className="react-logo" />
-      </Box>
-      <Box>
-        <Counter />
-      </Box>
-      <Box>
-        <Suspense fallback={<Spinner size="xl" />}>
-          <DocList />
-        </Suspense>
-      </Box>
-    </>
+    <div className="flex flex-col gap-4">
+      <h1 className="text-3xl font-semibold">Dashboard</h1>
+      <p className="text-base">
+        Sesión iniciada con permisos: <code>{permissions.join(', ') || 'ninguno'}</code>
+      </p>
+      <div>
+        <Button label="Cerrar sesión" icon="pi pi-sign-out" onClick={logout} />
+      </div>
+    </div>
   )
 })
-Dashboard.displayName = 'Index'
+Dashboard.displayName = 'Dashboard'
 
 export default Dashboard
