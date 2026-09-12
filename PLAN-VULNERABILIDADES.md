@@ -18,6 +18,7 @@ Marca las casillas a medida que avances y actualiza el estado de cada fase.
 | 2026-09-11 | Línea base | 4 / 68 / 43 / 12 = **127** | 4 / 48 / 34 / 8 = **94** | **221** |
 | 2026-09-11 | Tras Fase 1 | 3 / 51 / 19 / 10 = **83** (−44) | 4 / 48 / 34 / 8 = **94** | **177** |
 | 2026-09-11 | Tras Fase 2 | 2 / 41 / 18 / 7 = **68** (−15) | 4 / 48 / 34 / 8 = **94** | **162** |
+| 2026-09-11 | Tras Fase 3 | 0 / 3 / 1 / 1 = **5** (−63) | 4 / 48 / 34 / 8 = **94** | **99** |
 
 ## Cómo reproducir la auditoría
 
@@ -188,7 +189,7 @@ Ninguno de los tres entra en el alcance de este plan, pero el primero invalida e
 
 ## Fase 3 — Backend: cadenas transitivas con `overrides`
 
-**Estado:** ⬜ pendiente · **Riesgo funcional:** bajo
+**Estado:** ✅ **completada 2026-09-11** · **Impacto real: −63 avisos (68 → 5)** · **Backend sin críticas ni altas propias** · Sin regresiones
 
 `tar`, `minimatch`, `brace-expansion`, `basic-ftp`, `ws`, `js-yaml`, `picomatch` e `ip-address` vienen del toolchain de `sqlite3` (node-gyp) y `puppeteer`: solo se ejecutan en instalación. En vez de mayores arriesgados, fijarlos por rango-mayor en `backend/package.json` (el selector por major evita romper paquetes que esperan la API v3):
 
@@ -209,9 +210,42 @@ Ninguno de los tres entra en el alcance de este plan, pero el primero invalida e
 
 Se descarta subir `sqlite3` a 6.0.1: **la Fase 0 confirmó en contenedores reales que 5.1.7 tiene prebuild napi válido para Alpine/musl en Node 20 y 22**, así que el mayor no aporta nada. El override de `prebuild-install` ya aplicado en la Fase 0 forma parte de este bloque.
 
-- [ ] Añadir el bloque `pnpm.overrides`
-- [ ] `pnpm install && pnpm audit` para confirmar la reducción
-- [ ] Verificar que `sqlite3` sigue cargando: arrancar y comprobar que se crean las tablas
+- [x] Añadir el bloque `pnpm.overrides` (19 entradas, incluida la de `prebuild-install` que ya venía de la Fase 0)
+- [x] Quitar `body-parser` y `@types/body-parser` como dependencias directas: tampoco se importaban. `routing-controllers` lo sigue trayendo como optionalDep, así que hizo falta además el override `body-parser@1` — pnpm reutilizaba la resolución vieja 1.20.3 del lockfile
+- [x] `pnpm install && pnpm audit`: 68 → 5
+- [x] Verificar que `sqlite3` sigue cargando y que el servidor responde
+- [x] **Build limpio de Docker (`--no-cache`)**: `prebuild-install -r napi` resuelve sin caer a `node-gyp`, el contenedor arranca y responde 302/400
+
+### Overrides aplicados
+
+Selectores por rango-mayor para no imponerle a cada consumidor una API distinta de la que espera:
+
+```json
+"tar@<7.5.21": "^7.5.21",
+"tar-fs@2": "^2.1.4",  "tar-fs@3": "^3.1.1",
+"minimatch@3": "^3.1.4",  "minimatch@5": "^5.1.8",
+"brace-expansion@1": "^1.1.18",  "brace-expansion@2": "^2.1.4",
+"picomatch@2": "^2.3.2",  "js-yaml@4": "^4.3.2",
+"ws@8": "^8.21.0",  "qs@6": "^6.16.0",
+"basic-ftp": "^5.3.1",  "browserslist": "^4.28.7",
+"diff@4": "^4.0.4",  "body-parser@1": "^1.20.6",
+"@babel/core": "^7.29.6",  "@babel/helpers": "^7.26.10",  "@babel/runtime": "^7.26.10"
+```
+
+El de `tar` es el único que cruza un mayor (6 → 7): `sqlite3` lo declara como `^6.1.11` y solo lo usa en instalación. Por eso se verificó con un build de Docker sin caché, donde la instalación se ejecuta de cero.
+
+### Dos overrides descartados a propósito
+
+- **`ip-address` 9 → 10** (1 alta + 1 moderada): lo pide `socks@2.8.3`, que espera la API de la 9. Forzar el mayor es un riesgo mayor que el que cubre, y `socks` solo entra en juego con proxies SOCKS, que este proyecto no usa. Se resolverá al subir `puppeteer` en la Fase 4.1.
+- **`extract-zip`** (2 altas): **no existe versión parcheada** (`patched: <0.0.0`). Solo desaparece cuando `puppeteer` deja de depender de él, es decir, en la Fase 4.1.
+
+### Avisos restantes en el backend (5, ninguno crítico)
+
+| Severidad | Módulo | Vía | Se resuelve en |
+|---|---|---|---|
+| alta ×2 | `extract-zip` | puppeteer | Fase 4.1 |
+| alta + moderada | `ip-address` | puppeteer → socks | Fase 4.1 |
+| baja | `@tootallnate/once` | sqlite3 → node-gyp | Sin impacto real (solo instalación) |
 
 ---
 

@@ -16,7 +16,6 @@
   "dependencies": {
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "awilix": "^12.0.3",
-    "body-parser": "^1.20.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.4",
     "cron": "^3.1.7",
@@ -31,7 +30,6 @@
     "whatsapp-web.js": "^1.26.0"
   },
   "devDependencies": {
-    "@types/body-parser": "^1.19.5",
     "@types/express": "^5.0.0",
     "@types/qrcode": "^1.5.5",
     "prettier": "^3.3.3",
@@ -44,7 +42,25 @@
       "puppeteer"
     ],
     "overrides": {
-      "prebuild-install": "^7.1.3"
+      "prebuild-install": "^7.1.3",
+      "tar@<7.5.21": "^7.5.21",
+      "tar-fs@2": "^2.1.4",
+      "tar-fs@3": "^3.1.1",
+      "minimatch@3": "^3.1.4",
+      "minimatch@5": "^5.1.8",
+      "brace-expansion@1": "^1.1.18",
+      "brace-expansion@2": "^2.1.4",
+      "picomatch@2": "^2.3.2",
+      "js-yaml@4": "^4.3.2",
+      "ws@8": "^8.21.0",
+      "qs@6": "^6.16.0",
+      "basic-ftp": "^5.3.1",
+      "browserslist": "^4.28.7",
+      "diff@4": "^4.0.4",
+      "@babel/core": "^7.29.6",
+      "@babel/helpers": "^7.26.10",
+      "@babel/runtime": "^7.26.10",
+      "body-parser@1": "^1.20.6"
     }
   }
 }
