@@ -20,6 +20,7 @@ Marca las casillas a medida que avances y actualiza el estado de cada fase.
 | 2026-09-11 | Tras Fase 2 | 2 / 41 / 18 / 7 = **68** (−15) | 4 / 48 / 34 / 8 = **94** | **162** |
 | 2026-09-11 | Tras Fase 3 | 0 / 3 / 1 / 1 = **5** (−63) | 4 / 48 / 34 / 8 = **94** | **99** |
 | 2026-09-11 | Tras Fase 4.1 | 0 / 2 / 0 / 0 = **2** (−3) | 4 / 48 / 34 / 8 = **94** | **96** |
+| 2026-09-11 | Tras Fase 4.2 | 0 / 2 / 0 / 0 = **2** (sin cambio) | 4 / 48 / 34 / 8 = **94** | **96** |
 
 ## Cómo reproducir la auditoría
 
@@ -252,7 +253,7 @@ El de `tar` es el único que cruza un mayor (6 → 7): `sqlite3` lo declara como
 
 ## Fase 4 — Backend: cambios con riesgo funcional (un commit por cada uno)
 
-**Estado:** 4.1 ✅ completada 2026-09-11 (−3 avisos, 5 → 2) · 4.2 ⬜ pendiente, requiere prueba manual
+**Estado:** 4.1 ✅ completada 2026-09-11 (−3 avisos, 5 → 2) · 4.2 ✅ completada 2026-09-11 (prueba manual superada; 0 avisos, ver abajo)
 
 ### 4.1 `puppeteer` 23.6 → 25.10 ✅
 
@@ -287,11 +288,40 @@ Además: `pnpm build` ✅, build de Docker `--no-cache` ✅, servidor local 302/
 
 El cambio más delicado. Arrastra su propio `puppeteer@24.38.0`; hoy arrastra el **18.2.1**, origen de 6 avisos. `Client`, `LocalAuth`, `MessageMedia` y `sendMessage` no cambian de firma, pero toca internals de WhatsApp Web. La versión actual tiene ~2 años y es probable que ya falle contra el WhatsApp Web vigente.
 
-**Ahora es la única fuente de avisos del backend:** las 2 altas de `extract-zip` que quedan (sin versión parcheada) salen de su `puppeteer@18.2.1` anidado.
+- [x] Bump a `whatsapp-web.js@1.34.7`. Su `puppeteer` anidado pasa de **18.2.1 → 24.38.0**
+- [x] Re-escanear el QR
+- [x] Enviar una imagen de prueba y confirmar recepción
+- [x] Confirmar que la app real reutiliza la sesión sin pedir QR de nuevo
 
-- [ ] Bump
-- [ ] Re-escanear el QR en `GET /api/auth/whatsapp/login`
-- [ ] Enviar una imagen de prueba y confirmar recepción
+### Cómo se probó
+
+Se movió la sesión de la 1.26 a un backup y se levantó un script temporal (`wa-qr.tmp.js`, ya borrado) que publicaba el QR en `http://localhost:3080` con auto-refresco, porque el endpoint `/api/auth/whatsapp/login` devuelve el QR como data-URL dentro de un JSON —ilegible para escanear— y además **destruye y reinicia el cliente en cada llamada**.
+
+| Paso | Resultado |
+|---|---|
+| Arranque de wwebjs 1.34.7 y emisión de QR | OK |
+| Escaneo desde el móvil | `AUTENTICADO` → `CLIENTE LISTO`, número `5732143xxxxx@c.us` |
+| `sendMessage` con `MessageMedia.fromFilePath` al chat propio | Imagen entregada |
+| Reinicio de la app real (`pnpm start:dev`) | `WhatsApp client authenticated!` → `ready and authenticated` **sin pedir QR**: la sesión de `LocalAuth` persiste |
+| `GET /api/auth/whatsapp/login` con sesión activa | `{"message":"WhatsApp client is already authenticated."}` — no destruye la sesión |
+| Endpoints de Outlook | 302 / 400 / 404 |
+
+### Por qué el conteo no baja: `extract-zip`
+
+Las 2 altas siguen ahí, pero cambiaron de origen:
+
+```
+antes:   .>whatsapp-web.js>puppeteer@18.2.1>puppeteer-core@18.2.1>extract-zip
+después: .>whatsapp-web.js>puppeteer@24.38.0>@puppeteer/browsers@2.13.0>extract-zip
+```
+
+Nuestro `puppeteer@25.10.0` directo usa `@puppeteer/browsers@3.2.2`, que ya no depende de `extract-zip`. Forzar ese mayor dentro del puppeteer que `whatsapp-web.js` fija de forma exacta es peor negocio que el riesgo que cubre, y **la advisory no tiene versión parcheada** (`patched: <0.0.0`).
+
+**Se acepta el riesgo**, porque no es alcanzable en esta configuración: `extract-zip` solo se ejecuta al descargar un navegador, y la imagen define `PUPPETEER_SKIP_DOWNLOAD=true` usando el Chromium de Alpine. Revisar cuando `whatsapp-web.js` suba a un puppeteer con `@puppeteer/browsers` 3.x.
+
+### Observación al margen
+
+En el arranque se vio al cron de comprobantes ejecutarse **antes** de que el cliente de WhatsApp terminase de autenticar, abortando con «WhatsApp client is not authenticated». Es una carrera preexistente: `WhatsAppService` tarda ~30 s en estar listo y los jobs arrancan de inmediato. Con el cron real (una vez al mes a una hora fija) no se manifiesta, pero conviene tenerlo presente.
 
 > **Bug relacionado que interferirá con esta prueba:** `WhatsAppService.clearSession()` borra la ruta hardcodeada `/app/.wwebjs_auth/session` en **cada** `initialize()`. En Docker eso invalida la sesión persistida de `LocalAuth` y obliga a re-escanear el QR en cada reconexión. Es un defecto funcional, no de seguridad.
 
