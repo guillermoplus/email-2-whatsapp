@@ -2,6 +2,7 @@
   "name": "create-react-app-vite",
   "version": "0.4.0",
   "license": "MIT",
+  "packageManager": "pnpm@10.8.1",
   "msw": {
     "workerDirectory": "public"
   },
@@ -21,7 +22,7 @@
     "typecheck": "tsc --noEmit",
     "prettier": "prettier --ignore-unknown --write .",
     "clean": "rimraf node_modules pnpm-lock.yaml dist",
-    "validate": "./scripts/validate",
+    "validate": "concurrently --kill-others-on-fail --prefix \"[{name}]\" --names \"test,lint:fix,typecheck,build\" --prefix-colors \"bgRed.bold.white,bgGreen.bold.white,bgBlue.bold.white,bgMagenta.bold.white\" \"pnpm run test\" \"pnpm run lint:fix\" \"pnpm run typecheck\" \"pnpm run build\"",
     "remove:tailwind": "scripts/remove_tailwind.js",
     "prepare": "husky"
   },
@@ -85,6 +86,13 @@
     "vitest": "^2.1.6"
   },
   "volta": {
-    "node": "20.16.0"
+    "node": "22.23.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@swc/core",
+      "esbuild",
+      "msw"
+    ]
   }
 }

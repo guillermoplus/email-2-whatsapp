@@ -42,14 +42,62 @@ La severidad de Dependabot ignora el contexto de uso. Orden real de exposición:
 
 ## Fase 0 — Estandarizar Node y el gestor de paquetes
 
-**Estado:** ⬜ pendiente
+**Estado:** ✅ **completada 2026-09-11** · Sin efecto en el conteo de avisos (es infraestructura); desbloquea las Fases 4 y 5
 
-Node 20 llegó a EOL en abril de 2026 y la máquina de desarrollo tiene Node 16 por defecto. Varios parches posteriores lo exigen: `react-router` 7.18 (≥20), `sqlite3` 6 (≥20.17), `@testing-library/jest-dom` 6.10 (≥22).
+Node 20 llegó a EOL en abril de 2026 y la máquina de desarrollo tenía Node 16 por defecto. Varios parches posteriores lo exigen: `react-router` 7.18 (≥20), `@testing-library/jest-dom` 6.10 (≥22).
 
-- [ ] `frontend/package.json`: `volta.node` → `22.x`
-- [ ] `backend/Dockerfile`: `FROM node:20-alpine` → `node:22-alpine`
-- [ ] Añadir `"packageManager": "pnpm@10.8.1"` a ambos `package.json` (hoy nada fija el gestor)
-- [ ] Corregir `frontend/scripts/validate`: invoca `npm run` en vez de `pnpm run`
+- [x] `frontend/package.json`: `volta.node` → `22.23.2`
+- [x] `backend/Dockerfile`: `FROM node:20-alpine` → `node:22-alpine`
+- [x] Añadir `"packageManager": "pnpm@10.8.1"` a ambos `package.json`
+- [x] `frontend`: el `validate` pasa a invocar `pnpm run` en vez de `npm run`
+- [x] `backend/Dockerfile`: fijar `npm install -g pnpm@10.8.1` (antes sin versión: instalaba pnpm 12, que ignora los scripts de instalación), usar `pnpm install --frozen-lockfile` y mover el `apk add` antes del `COPY` para cachear capas
+- [x] `backend/Dockerfile`: eliminar `RUN pnpm install --save-dev puppeteer` y `RUN pnpm install puppeteer-core`, que **reintroducían en la imagen las dependencias borradas en la Fase 1** y mutaban `package.json` dentro del build
+- [x] `backend/Dockerfile`: `ENV PUPPETEER_SKIP_DOWNLOAD=true` — con `onlyBuiltDependencies` activo, Puppeteer descargaba ~180 MB de Chrome que la imagen no usa (su binario es glibc-only); el contenedor usa el Chromium de Alpine vía `PUPPETEER_EXECUTABLE_PATH`
+- [x] `frontend/package.json`: `pnpm.onlyBuiltDependencies` para `@swc/core`, `esbuild` y `msw` — mismo problema que tenía el backend en la Fase 1
+- [x] `backend/package.json`: override `prebuild-install: ^7.1.3` (ver abajo)
+
+### El bloqueo que apareció: `prebuild-install@7.1.2`
+
+La imagen con Node 22 **no compilaba**: `sqlite3` caía a `node-gyp` y Alpine no trae Python ni compilador.
+
+La causa no era musl ni Node 22. Matriz probada en contenedores limpios — `node:20-alpine` y `node:22-alpine` × `sqlite3@5.1.7` y `@6.0.1`, con npm y con pnpm: **las cuatro combinaciones funcionan**. La diferencia estaba en nuestro lockfile, que pineaba `prebuild-install@7.1.2` (una resolución fresca trae 7.1.3). Esa versión no detecta la ABI y aborta con:
+
+```
+prebuild-install warn This package does not support N-API version undefined
+prebuild-install warn install No prebuilt binaries found (target=undefined runtime=napi arch=x64 libc=musl platform=linux)
+```
+
+Se resuelve con un override en `backend/package.json`:
+
+```json
+"pnpm": { "overrides": { "prebuild-install": "^7.1.3" } }
+```
+
+**Conclusión para la Fase 3:** no hace falta subir `sqlite3` a 6.0.1 — 5.1.7 tiene prebuild napi válido para Alpine/musl en Node 20 y 22.
+
+### Verificación
+
+**Backend, en contenedor real** (`docker build` + `docker run`):
+
+| Prueba | Resultado |
+|---|---|
+| `docker build` con `node:22-alpine` | Imagen construida |
+| `require('sqlite3')` dentro del contenedor | OK — prebuild napi sobre musl, sin compilar |
+| Puppeteer: `launch` + `setContent` + `screenshot` | OK — screenshot de 4198 bytes con Chrome/152 de Alpine. Es exactamente lo que hace el job de comprobantes |
+| Arranque en modo producción con variables de entorno | `Server is running on port 3072` |
+| `GET /api/auth/outlook/login` desde fuera del contenedor | 302 |
+
+**Frontend** (Node 22): `pnpm typecheck` ✅, `pnpm build` ✅, `pnpm lint` ✅, `pnpm test` ❌ (ver abajo).
+
+### Hallazgos
+
+**`pnpm validate` nunca funcionó en Windows.** `scripts/validate` es un shell script invocado como `./scripts/validate`, que cmd.exe no sabe ejecutar (`'.' is not recognized as an internal or external command`). Como ningún workflow de CI lo usa (cada uno llama a `pnpm test` / `lint` / `typecheck` / `build` por separado), se inlineó el comando de `concurrently` en `package.json` y se borró el script. Ahora corre en Windows.
+
+**3 tests del frontend fallan desde antes de tocar nada.** `src/App.test.tsx` sigue siendo el del template `create-react-app-vite`: busca `I'm REACT_APP_TEXT from .env` y `count is: 0`, que pertenecen a `src/pages/Index/` — la página que dejó de estar enrutada cuando se añadió el router. Ahora `App` monta `RouterProvider` y los tests revientan con `<Navigate> may be used only in the context of a <Router> component`.
+
+> **Impacto en la Fase 5:** la suite está roja de base, así que `pnpm test` **no sirve como red de seguridad** para el bump de `react-router`. Hay que arreglar o borrar `App.test.tsx` antes, o verificar el bump a mano en el navegador.
+
+**`husky` no se instala.** El `prepare` del frontend falla con `.git can't be found`: husky corre desde `frontend/` pero el repositorio git está un nivel más arriba. El hook de pre-commit (Prettier vía lint-staged) nunca se ha activado.
 
 ---
 
@@ -159,7 +207,7 @@ Ninguno de los tres entra en el alcance de este plan, pero el primero invalida e
 }
 ```
 
-Se descarta subir `sqlite3` a 6.0.1: exige Node ≥20.17 y cambia a `prebuild-install`, que **podría no tener binarios para Alpine/musl** y forzaría compilación dentro del contenedor.
+Se descarta subir `sqlite3` a 6.0.1: **la Fase 0 confirmó en contenedores reales que 5.1.7 tiene prebuild napi válido para Alpine/musl en Node 20 y 22**, así que el mayor no aporta nada. El override de `prebuild-install` ya aplicado en la Fase 0 forma parte de este bloque.
 
 - [ ] Añadir el bloque `pnpm.overrides`
 - [ ] `pnpm install && pnpm audit` para confirmar la reducción

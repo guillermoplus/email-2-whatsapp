@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "This project is designed to integrate email services with WhatsApp, allowing users to receive email notifications directly on WhatsApp.",
   "main": "index.js",
+  "packageManager": "pnpm@10.8.1",
   "scripts": {
     "start": "node dist/index.js",
     "start:dev": "ts-node src/index.ts",
@@ -41,6 +42,9 @@
     "onlyBuiltDependencies": [
       "sqlite3",
       "puppeteer"
-    ]
+    ],
+    "overrides": {
+      "prebuild-install": "^7.1.3"
+    }
   }
 }

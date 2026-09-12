@@ -1,17 +1,9 @@
-FROM node:20-alpine
+FROM node:22-alpine
 
-# Establecer el directorio de trabajo
 WORKDIR /app
 
-# Copiar archivos de configuración
-COPY package.json pnpm-lock.yaml ./
-
-# Instalar pnpm y las dependencias
-RUN npm install -g pnpm
-RUN pnpm install --save-dev puppeteer
-RUN pnpm install puppeteer-core
-
-# Instalar las dependencias de sistema necesarias para Puppeteer en Alpine
+# Dependencias de sistema para Puppeteer en Alpine.
+# Va antes del COPY para aprovechar la cache de capas.
 RUN apk add --no-cache \
     chromium \
     nss \
@@ -20,20 +12,29 @@ RUN apk add --no-cache \
     ca-certificates \
     ttf-freefont
 
-# Definir la ubicación del ejecutable de Chromium
+# Puppeteer usa el Chromium de Alpine, asi que no descarga el suyo: el binario
+# que publica es glibc-only y aqui no sirve.
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 
-# Instalar dependencias de la app
-RUN pnpm install
+# Copiar manifiestos primero para cachear la instalacion
+COPY package.json pnpm-lock.yaml ./
 
-# Copiar el resto del código
+# pnpm fijado: las versiones >=10 ignoran los scripts de instalacion salvo los
+# declarados en pnpm.onlyBuiltDependencies, del que depende el binding nativo
+# de sqlite3.
+RUN npm install -g pnpm@10.8.1
+
+# --frozen-lockfile: falla si el lockfile no coincide con package.json, en vez
+# de resolver versiones distintas a las probadas.
+RUN pnpm install --frozen-lockfile
+
+# Copiar el resto del codigo
 COPY . .
 
 # Compilar TypeScript
 RUN pnpm run build
 
-# Exponer el puerto
 EXPOSE 3072
 
-# Comando para ejecutar la aplicación
 CMD ["pnpm", "start"]
