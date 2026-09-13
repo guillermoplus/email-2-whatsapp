@@ -399,6 +399,45 @@ Y la prueba decisiva de fidelidad visual: **la captura del login de la versión 
 - [ ] Añadir `pnpm audit --prod` al CI para separar lo que llega a producción del ruido de tooling
 - [x] ~~Revisar restos de la plantilla `create-react-app-vite`~~ — resuelto al reconstruir el frontend en la Fase 5
 
+## Correcciones de seguridad aplicadas (2026-09-13)
+
+Dos fugas de credenciales detectadas al revisar el backend tras cerrar las fases.
+
+### 1. La imagen Docker embebía secretos ✅
+
+El `.dockerignore` solo excluía `node_modules`, `.env`, `.git` y `dist`, así que `COPY . .` metía dentro de la imagen:
+
+| Ruta | Qué era |
+|---|---|
+| `/app/.wwebjs_auth/` | La sesión de WhatsApp: permite enviar mensajes como el usuario |
+| `/app/src/database/database.db` | 10 filas en `tokens`, una con `access_token` de 1184 caracteres |
+| `/app/tmp/email.png` | Un comprobante de pago renderizado |
+| `/app/.idea/` | Configuración del IDE, incluidos los data sources |
+
+Se reescribió el `.dockerignore`. Dos detalles que costaron una iteración:
+
+- **Docker casa los patrones contra la ruta completa desde la raíz del contexto**, no como `.gitignore`: `*.db` no cubría `src/database/database.db`; hace falta `**/*.db`.
+- `tmp/**/*` con `!tmp/.gitkeep`, porque el directorio **debe existir** en la imagen: el job escribe en `./tmp/email.html` con ruta relativa.
+
+Verificado en la imagen reconstruida: `.wwebjs_auth`, `database.db`, `tmp/email.png`, `.idea` y `.env` ausentes; un `find` de `*.db`/`*.sqlite*`/`*.wwebjs*` fuera de `node_modules` no devuelve nada; `tmp/` sigue presente; el contenedor arranca, crea las tablas `tokens` y `messages` en runtime y responde 302/400.
+
+> **Consecuencia operativa:** un contenedor recién desplegado ya no arranca con la base de datos de la máquina de desarrollo, así que **hay que hacer el login de Outlook y escanear el QR después de cada despliegue** hasta que se resuelva lo del volumen (ver pendientes). Antes esa "persistencia" era accidental y congelaba el estado del momento del build.
+
+### 2. `AuthService` volcaba credenciales en los logs ✅
+
+```
+console.log('params:', params.toString())      // client_secret y el code de OAuth
+console.log('getToken Response:', data)        // access_token y refresh_token completos
+console.log('refreshToken Response:', data)
+console.log('validateToken Response:', data)
+```
+
+Se eliminó el volcado de `params` y los tres volcados de respuesta pasan por `describeTokenResponse()`, que resume sin exponer nada: en error `HTTP <status> <error>: <error_description>`, en éxito `token_type`, `expires_in` y `scope`.
+
+Verificado ejecutando `getToken()` y `refreshToken()` de verdad contra los endpoints de Microsoft con valores centinela: ni el secreto, ni el code, ni el refresh token aparecen en la salida.
+
+---
+
 ## Pendientes conocidos, fuera del alcance de este plan
 
 Defectos preexistentes detectados durante las verificaciones y documentados en su fase:

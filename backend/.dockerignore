@@ -1,9 +1,31 @@
-# Ignorar archivos y directorios no necesarios
+# Dependencias y artefactos de build (se reinstalan y recompilan en la imagen)
 node_modules
-npm-debug.log
-.DS_Store
+dist
+**/*.log
+
+# Secretos y estado local: NUNCA deben viajar dentro de la imagen.
+# .wwebjs_auth es la sesion de WhatsApp (permite enviar mensajes como el usuario)
+# y los .db llevan los tokens de Outlook.
 .env
+.wwebjs_auth
+.wwebjs_cache
+# Con doble asterisco: Docker casa los patrones contra la ruta completa desde
+# la raiz del contexto, asi que "*.db" solo cubriria la raiz.
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+
+# Salida temporal del job de comprobantes: se regenera en cada ejecucion, pero
+# el directorio debe existir porque el job escribe en ./tmp con ruta relativa.
+tmp/**/*
+!tmp/.gitkeep
+
+# Metadatos de desarrollo
 .git
 .gitignore
 .dockerignore
-dist
+.idea
+.editorconfig
+.prettierrc
+.prettierignore
+.DS_Store

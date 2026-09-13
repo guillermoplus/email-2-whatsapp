@@ -17,6 +17,20 @@ export class AuthService {
     this.TOKEN_URL = process.env.OUTLOOK_TOKEN_URL ?? '';
   }
 
+  /**
+   * Resume una respuesta del endpoint de token sin volcar credenciales.
+   * El cuerpo trae access_token y refresh_token: nunca debe loguearse entero.
+   */
+  private describeTokenResponse(status: number, data: any) {
+    if (data?.error) {
+      return `HTTP ${status} ${data.error}: ${data.error_description ?? ''}`.trim();
+    }
+    if (data?.access_token) {
+      return `HTTP ${status} ok (token_type=${data.token_type}, expires_in=${data.expires_in}s, scope=${data.scope})`;
+    }
+    return `HTTP ${status} respuesta sin access_token ni error`;
+  }
+
   getAuthUrl(state: string) {
     const params = new URLSearchParams({
       client_id: this.CLIENT_ID,
@@ -38,7 +52,6 @@ export class AuthService {
       grant_type: 'authorization_code',
       client_secret: this.CLIENT_SECRET,
     });
-    console.log('params:', params.toString());
     const response = await fetch(this.TOKEN_URL, {
       method: 'POST',
       headers: {
@@ -47,7 +60,7 @@ export class AuthService {
       body: params.toString(),
     });
     const data = await response.json();
-    console.log('getToken Response:', data);
+    console.log('getToken:', this.describeTokenResponse(response.status, data));
     return data;
   }
 
@@ -68,7 +81,7 @@ export class AuthService {
       body: params.toString(),
     });
     const data = await response.json();
-    console.log('refreshToken Response:', data);
+    console.log('refreshToken:', this.describeTokenResponse(response.status, data));
     return data;
   }
 
@@ -84,7 +97,7 @@ export class AuthService {
       body: params.toString(),
     });
     const data = await response.json();
-    console.log('validateToken Response:', data);
+    console.log('validateToken:', this.describeTokenResponse(response.status, data));
     return data;
   }
 }
